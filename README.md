@@ -22,7 +22,7 @@ npx skills add WellDunDun/reins
 
 The skill teaches your agent when and how to run every Reins command — command priority (local source vs. npx), JSON output parsing, and when to pair `audit` with `doctor` for remediation detail. Once installed, you talk:
 
-```
+```text
 You:   "Audit this codebase and show me the weakest dimensions"
 Agent: runs reins audit, parses JSON, summarizes gaps
 

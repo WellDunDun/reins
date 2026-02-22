@@ -7,7 +7,7 @@ assignees: ''
 ---
 
 **Command run**
-```
+```bash
 reins <command> <args>
 ```
 

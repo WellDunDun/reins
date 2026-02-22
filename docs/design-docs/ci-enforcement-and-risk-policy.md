@@ -29,7 +29,7 @@ This document captures how `reins` currently enforces quality gates and docs-dri
 - Publishes `reins-cli` to npm
 - Creates a GitHub Release with auto-generated release notes
 
-3. Workflow enforcement detection should avoid false positives.
+4. Workflow enforcement detection should avoid false positives.
 CLI workflow scanning no longer uses broad substring matching (e.g. `"check"` matching `actions/checkout`).
 It now uses explicit regex patterns for gates like `lint`, `test`, and `typecheck`.
 
@@ -44,6 +44,6 @@ It now uses explicit regex patterns for gates like `lint`, `test`, and `typechec
 
 - The self-audit score improved because governance and CI depth are now explicit.
 - CLI projects can satisfy the legibility observability signal with strong diagnosability evidence instead of irrelevant service observability infrastructure.
-- Lint remains advisory until the existing lint baseline is reduced to a level that can block merges safely.
+- Lint baseline has been reduced and now passes cleanly in local checks; CI lint remains advisory until the workflow flips the gate to blocking.
 - Every merge to master produces a versioned npm release, removing the manual publish bottleneck.
 - Requires `NPM_TOKEN` secret in GitHub repo settings for npm authentication.
