@@ -68,6 +68,17 @@ Returns a maturity level:
 - **L3: Autonomous** (14-16) — Agents handle full lifecycle
 - **L4: Self-Correcting** (17-18) — System maintains itself
 
+### `harness evolve <path>`
+
+Show the evolution path from your current maturity level to the next:
+
+```bash
+harness evolve .
+harness evolve . --apply   # Auto-run scaffolding steps
+```
+
+Runs an audit, identifies your current level, and returns a step-by-step roadmap to level up — including which steps are automatable and which require human decisions.
+
 ### `harness doctor <path>`
 
 Check project health with prescriptive fixes:
