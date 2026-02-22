@@ -971,7 +971,14 @@ function scoreMonorepoDependencyFootprint(result: AuditResult, ctx: AuditRuntime
     }
   }
 
-  const avgDeps = counted > 0 ? Math.round(totalDeps / counted) : 0;
+  if (counted === 0) {
+    result.scores.agent_legibility.findings.push(
+      "No readable workspace package.json files for dependency footprint analysis",
+    );
+    return;
+  }
+
+  const avgDeps = Math.round(totalDeps / counted);
   if (avgDeps < 30) {
     result.scores.agent_legibility.score++;
     result.scores.agent_legibility.findings.push(

@@ -516,6 +516,23 @@ describe("D3: Agent Legibility — monorepo and observability", () => {
     );
   });
 
+  test("monorepo with unreadable workspace package.json does not award dependency point", async () => {
+    const dir = tmpDir("d3-mono-unreadable-pkg");
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ workspaces: ["packages/*"] }));
+    mkdirSync(join(dir, "packages", "broken"), { recursive: true });
+    writeFileSync(join(dir, "packages", "broken", "package.json"), "{ invalid json");
+
+    const { stdout } = await runCli(`audit ${dir}`);
+    const result = JSON.parse(stdout);
+
+    expect(result.scores.agent_legibility.findings).toEqual(
+      expect.arrayContaining([expect.stringContaining("No readable workspace package.json files")]),
+    );
+    expect(result.scores.agent_legibility.findings).not.toEqual(
+      expect.arrayContaining([expect.stringContaining("Lean workspace dependencies")]),
+    );
+  });
+
   test("CLI repos can satisfy observability via diagnosability signals", async () => {
     const dir = tmpDir("d3-cli-diagnosability");
     writeFileSync(
