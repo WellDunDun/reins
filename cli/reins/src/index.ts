@@ -330,7 +330,7 @@ function init(options: InitOptions): void {
     console.error(
       JSON.stringify({
         error: "AGENTS.md already exists. Use --force to overwrite.",
-        hint: "Run 'harness audit' to assess your current setup instead.",
+        hint: "Run 'reins audit' to assess your current setup instead.",
       })
     );
     process.exit(1);
@@ -386,7 +386,7 @@ function init(options: InitOptions): void {
           "Edit AGENTS.md — fill in the project description",
           "Edit ARCHITECTURE.md — define your business domains",
           "Edit docs/golden-principles.md — customize rules for your project",
-          "Run 'harness audit .' to see your starting score",
+          "Run 'reins audit .' to see your starting score",
         ],
       },
       null,
@@ -395,12 +395,11 @@ function init(options: InitOptions): void {
   );
 }
 
-function audit(targetPath: string): void {
+function runAudit(targetPath: string): AuditResult {
   const targetDir = resolve(targetPath);
 
   if (!existsSync(targetDir)) {
-    console.error(JSON.stringify({ error: `Directory does not exist: ${targetDir}` }));
-    process.exit(1);
+    throw new Error(`Directory does not exist: ${targetDir}`);
   }
 
   const projectName = basename(targetDir);
@@ -438,7 +437,7 @@ function audit(targetPath: string): void {
     }
   } else {
     result.scores.repository_knowledge.findings.push("AGENTS.md missing");
-    result.recommendations.push("Create AGENTS.md as a concise map (~100 lines) — run 'harness init .'");
+    result.recommendations.push("Create AGENTS.md as a concise map (~100 lines) — run 'reins init .'");
   }
 
   const docsDir = join(targetDir, "docs");
@@ -455,7 +454,7 @@ function audit(targetPath: string): void {
     }
   } else {
     result.scores.repository_knowledge.findings.push("docs/ directory missing");
-    result.recommendations.push("Create docs/ directory structure — run 'harness init .'");
+    result.recommendations.push("Create docs/ directory structure — run 'reins init .'");
   }
 
   const execPlans = join(targetDir, "docs", "exec-plans");
@@ -657,7 +656,18 @@ function audit(targetPath: string): void {
     result.recommendations.push("Project is well-structured. Consider evolving to next maturity level.");
   }
 
-  console.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
+function audit(targetPath: string): void {
+  try {
+    const result = runAudit(targetPath);
+    console.log(JSON.stringify(result, null, 2));
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error(JSON.stringify({ error: message }));
+    process.exit(1);
+  }
 }
 
 function doctor(targetPath: string): void {
@@ -688,7 +698,7 @@ function doctor(targetPath: string): void {
     checks.push({
       check: "AGENTS.md missing",
       status: "fail",
-      fix: "Run 'harness init .' to create AGENTS.md",
+      fix: "Run 'reins init .' to create AGENTS.md",
     });
   }
 
@@ -699,7 +709,7 @@ function doctor(targetPath: string): void {
     checks.push({
       check: "ARCHITECTURE.md missing",
       status: "fail",
-      fix: "Run 'harness init .' to create ARCHITECTURE.md",
+      fix: "Run 'reins init .' to create ARCHITECTURE.md",
     });
   }
 
@@ -719,7 +729,7 @@ function doctor(targetPath: string): void {
       checks.push({
         check: `${doc} missing`,
         status: "fail",
-        fix: `Run 'harness init .' to create missing files`,
+        fix: `Run 'reins init .' to create missing files`,
       });
     }
   }
@@ -767,30 +777,183 @@ function doctor(targetPath: string): void {
   );
 }
 
+// ─── Evolution Paths ────────────────────────────────────────────────────────
+
+interface EvolutionStep {
+  step: number;
+  action: string;
+  description: string;
+  automated: boolean;
+}
+
+interface EvolutionPath {
+  from: string;
+  to: string;
+  goal: string;
+  steps: EvolutionStep[];
+  success_criteria: string;
+}
+
+const EVOLUTION_PATHS: Record<string, EvolutionPath> = {
+  "L0": {
+    from: "L0: Manual",
+    to: "L1: Assisted",
+    goal: "Get agents into the development loop",
+    steps: [
+      { step: 1, action: "Create AGENTS.md", description: "Concise map (~100 lines) pointing agents to deeper docs. Run 'reins init .' to generate.", automated: true },
+      { step: 2, action: "Create docs/ structure", description: "Design docs, product specs, references, execution plans — all versioned in-repo.", automated: true },
+      { step: 3, action: "Document architecture", description: "ARCHITECTURE.md with domain map, layer ordering, and dependency direction rules.", automated: true },
+      { step: 4, action: "Set up agent-friendly CI", description: "Fast feedback, clear error messages, deterministic output. Agents need to parse CI results.", automated: false },
+      { step: 5, action: "First agent PR", description: "Have an agent open its first PR from a prompt. Validates the full loop works end-to-end.", automated: false },
+    ],
+    success_criteria: "Agent can read AGENTS.md, follow pointers, and open a useful PR.",
+  },
+  "L1": {
+    from: "L1: Assisted",
+    to: "L2: Steered",
+    goal: "Shift from human-writes-code to human-steers-agent",
+    steps: [
+      { step: 1, action: "Write golden principles", description: "Mechanical taste rules in docs/golden-principles.md, enforced in CI — not just documented.", automated: true },
+      { step: 2, action: "Add structural linters", description: "Custom lint rules for dependency direction, layer violations, naming conventions.", automated: false },
+      { step: 3, action: "Enable worktree isolation", description: "App bootable per git worktree — one instance per in-flight change.", automated: false },
+      { step: 4, action: "Create exec-plan templates", description: "Versioned execution plans in docs/exec-plans/ — active, completed, and tech debt tracked.", automated: true },
+      { step: 5, action: "Adopt prompt-first workflow", description: "Describe tasks in natural language. Agents write all code, tests, and docs.", automated: false },
+    ],
+    success_criteria: "Most new code is written by agents, not humans.",
+  },
+  "L2": {
+    from: "L2: Steered",
+    to: "L3: Autonomous",
+    goal: "Agent handles full PR lifecycle end-to-end",
+    steps: [
+      { step: 1, action: "Wire agent review", description: "Agent-to-agent review loops — agents review each other's PRs before human spot-check.", automated: false },
+      { step: 2, action: "Add observability", description: "Logs, metrics, traces accessible to agents via local stack (LogQL, PromQL, TraceQL).", automated: false },
+      { step: 3, action: "Enable self-validation", description: "Agent drives the app, takes screenshots, checks behavior against expectations.", automated: false },
+      { step: 4, action: "Reduce merge gates", description: "Minimize blocking requirements. Corrections are cheap, waiting is expensive.", automated: false },
+      { step: 5, action: "Build escalation paths", description: "Clear criteria for when to involve humans vs. when agents can proceed autonomously.", automated: false },
+    ],
+    success_criteria: "Agent can end-to-end ship a feature from prompt to merge.",
+  },
+  "L3": {
+    from: "L3: Autonomous",
+    to: "L4: Self-Correcting",
+    goal: "System maintains and improves itself without human intervention",
+    steps: [
+      { step: 1, action: "Implement doc-gardening", description: "Recurring agent scans for stale docs — detects drift between docs and code.", automated: false },
+      { step: 2, action: "Add quality grades", description: "Per-domain, per-layer scoring tracked in ARCHITECTURE.md.", automated: false },
+      { step: 3, action: "Automate refactoring", description: "Background agents open cleanup PRs targeting highest-priority tech debt.", automated: false },
+      { step: 4, action: "Track tech debt continuously", description: "In-repo tracker with recurring review — debt paid down in small increments.", automated: true },
+      { step: 5, action: "Enable continuous improvement", description: "Human taste captured once in golden principles, enforced continuously by agents.", automated: false },
+    ],
+    success_criteria: "Codebase improves in quality without human intervention.",
+  },
+};
+
+function evolve(targetPath: string, runInit: boolean): void {
+  let auditResult: AuditResult;
+  try {
+    auditResult = runAudit(targetPath);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error(JSON.stringify({ error: message }));
+    process.exit(1);
+  }
+
+  // Determine current level key
+  let currentKey: string;
+  if (auditResult.total_score <= 4) currentKey = "L0";
+  else if (auditResult.total_score <= 8) currentKey = "L1";
+  else if (auditResult.total_score <= 13) currentKey = "L2";
+  else if (auditResult.total_score <= 16) currentKey = "L3";
+  else currentKey = "L4";
+
+  if (currentKey === "L4") {
+    console.log(
+      JSON.stringify(
+        {
+          command: "evolve",
+          project: auditResult.project,
+          current_level: auditResult.maturity_level,
+          current_score: auditResult.total_score,
+          message: "Already at L4: Self-Correcting. Focus on maintaining quality grades and continuous improvement.",
+        },
+        null,
+        2
+      )
+    );
+    return;
+  }
+
+  const path = EVOLUTION_PATHS[currentKey];
+  const automatedSteps = path.steps.filter((s) => s.automated);
+  const manualSteps = path.steps.filter((s) => !s.automated);
+
+  // If --apply flag is set, run automated steps
+  const applied: string[] = [];
+  if (runInit && automatedSteps.some((s) => s.action.includes("AGENTS.md") || s.action.includes("docs/"))) {
+    const targetDir = resolve(targetPath);
+    const agentsMd = join(targetDir, "AGENTS.md");
+    if (!existsSync(agentsMd)) {
+      init({ path: targetPath, name: "", force: false });
+      applied.push("Ran 'reins init' to scaffold missing structure");
+    }
+  }
+
+  // Find weakest dimensions for targeted advice
+  const weakest = Object.entries(auditResult.scores)
+    .sort(([, a], [, b]) => a.score - b.score)
+    .slice(0, 3)
+    .map(([dim, score]) => ({ dimension: dim, score: score.score, max: score.max, findings: score.findings }));
+
+  console.log(
+    JSON.stringify(
+      {
+        command: "evolve",
+        project: auditResult.project,
+        current_level: auditResult.maturity_level,
+        current_score: auditResult.total_score,
+        next_level: path.to,
+        goal: path.goal,
+        steps: path.steps,
+        success_criteria: path.success_criteria,
+        weakest_dimensions: weakest,
+        applied,
+        recommendations: auditResult.recommendations,
+      },
+      null,
+      2
+    )
+  );
+}
+
 // ─── CLI Router ─────────────────────────────────────────────────────────────
 
 function printHelp(): void {
-  const help = `harness — Harness Engineering CLI
+  const help = `reins — Harness Engineering CLI
 
 USAGE:
-  harness <command> [options]
+  reins <command> [options]
 
 COMMANDS:
   init <path>     Scaffold harness engineering structure in target directory
   audit <path>    Audit a project against harness engineering principles
+  evolve <path>   Show evolution path to next maturity level
   doctor <path>   Check project health with prescriptive fixes
   help            Show this help message
 
 OPTIONS:
   --name <name>   Project name (default: directory name)
   --force         Overwrite existing files
+  --apply         Auto-run scaffolding steps during evolve
   --json          Force JSON output (default)
 
 EXAMPLES:
-  harness init .                    # Scaffold in current directory
-  harness init ./my-project --name "My Project"
-  harness audit .                   # Score current project
-  harness doctor .                  # Get prescriptive fixes
+  reins init .                    # Scaffold in current directory
+  reins init ./my-project --name "My Project"
+  reins audit .                   # Score current project
+  reins evolve .                  # Get evolution roadmap
+  reins evolve . --apply          # Evolve with auto-scaffolding
+  reins doctor .                  # Get prescriptive fixes
 
 MATURITY LEVELS:
   L0: Manual          (0-4)   Traditional engineering
@@ -834,13 +997,18 @@ function main(): void {
       audit(path);
       break;
     }
+    case "evolve": {
+      const path = args[1] || ".";
+      evolve(path, hasFlag("--apply"));
+      break;
+    }
     case "doctor": {
       const path = args[1] || ".";
       doctor(path);
       break;
     }
     default:
-      console.error(JSON.stringify({ error: `Unknown command: ${command}`, hint: "Run 'harness help'" }));
+      console.error(JSON.stringify({ error: `Unknown command: ${command}`, hint: "Run 'reins help'" }));
       process.exit(1);
   }
 }

@@ -1,0 +1,44 @@
+{
+  "name": "reins",
+  "version": "0.1.0",
+  "description": "Scaffold, audit, and evolve projects using the Harness Engineering methodology",
+  "type": "module",
+  "license": "MIT",
+  "author": "Daniel Petro",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WellDunDun/harness-engineering.git",
+    "directory": "cli/reins"
+  },
+  "homepage": "https://github.com/WellDunDun/harness-engineering#readme",
+  "bugs": {
+    "url": "https://github.com/WellDunDun/harness-engineering/issues"
+  },
+  "keywords": [
+    "harness-engineering",
+    "agent-first",
+    "ai-coding",
+    "scaffolding",
+    "audit",
+    "maturity-model",
+    "developer-tools",
+    "claude-code",
+    "openai"
+  ],
+  "bin": {
+    "reins": "./bin/reins.js"
+  },
+  "files": [
+    "src/",
+    "bin/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "bun src/index.ts",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
