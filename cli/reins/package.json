@@ -7,12 +7,12 @@
   "author": "Daniel Petro",
   "repository": {
     "type": "git",
-    "url": "https://github.com/WellDunDun/harness-engineering.git",
+    "url": "https://github.com/WellDunDun/reins.git",
     "directory": "cli/reins"
   },
-  "homepage": "https://github.com/WellDunDun/harness-engineering#readme",
+  "homepage": "https://github.com/WellDunDun/reins#readme",
   "bugs": {
-    "url": "https://github.com/WellDunDun/harness-engineering/issues"
+    "url": "https://github.com/WellDunDun/reins/issues"
   },
   "keywords": [
     "harness-engineering",
