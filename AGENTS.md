@@ -15,6 +15,7 @@ See ARCHITECTURE.md for domain map, package layering, and dependency rules.
 | Architecture | ARCHITECTURE.md | Current |
 | Design Docs | docs/design-docs/index.md | Current |
 | Core Beliefs | docs/design-docs/core-beliefs.md | Current |
+| Ecosystem Positioning | docs/design-docs/ecosystem-positioning.md | Current |
 | Product Specs | docs/product-specs/index.md | Current |
 | Active Plans | docs/exec-plans/active/ | Current |
 | Completed Plans | docs/exec-plans/completed/ | Current |
