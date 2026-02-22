@@ -58,6 +58,7 @@ See ARCHITECTURE.md for domain map, package layering, and dependency rules.
 | Active Plans | docs/exec-plans/active/ | Current |
 | Completed Plans | docs/exec-plans/completed/ | Current |
 | Technical Debt | docs/exec-plans/tech-debt-tracker.md | Current |
+| Risk Policy | risk-policy.json | Current |
 | Golden Principles | docs/golden-principles.md | Current |
 | References | docs/references/ | Current |
 
@@ -271,6 +272,25 @@ Track known technical debt with priority and ownership.
 `;
 }
 
+function riskPolicyTemplate(): string {
+  return `{
+  "version": 1,
+  "tiers": ["low", "medium", "high"],
+  "watchPaths": ["src/", "docs/", "skill/"],
+  "docsDriftRules": [
+    {
+      "watch": "src/",
+      "docs": ["ARCHITECTURE.md", "docs/design-docs/index.md", "docs/golden-principles.md"]
+    },
+    {
+      "watch": "skill/",
+      "docs": ["AGENTS.md", "skill/Reins/HarnessMethodology.md"]
+    }
+  ]
+}
+`;
+}
+
 function designDocsIndexTemplate(): string {
   return `# Design Documents Index
 
@@ -345,13 +365,21 @@ function countGoldenPrinciples(content: string): number {
 
 function scanWorkflowsForEnforcement(workflowDir: string): string[] {
   const steps: Set<string> = new Set();
-  const keywords = ['lint', 'test', 'typecheck', 'type-check', 'build', 'audit', 'check', 'prettier', 'format'];
+  const keywordPatterns: Array<{ step: string; pattern: RegExp }> = [
+    { step: "lint", pattern: /\b(lint|eslint|biome\s+check)\b/ },
+    { step: "test", pattern: /\b(test|vitest|jest)\b/ },
+    { step: "typecheck", pattern: /\b(typecheck|type-check|tsc\s+--no-?emit)\b/ },
+    { step: "build", pattern: /\bbuild\b/ },
+    { step: "audit", pattern: /\baudit\b/ },
+    { step: "prettier", pattern: /\bprettier\b/ },
+    { step: "format", pattern: /\bformat\b/ },
+  ];
   try {
     const files = readdirSync(workflowDir).filter(f => f.endsWith('.yml') || f.endsWith('.yaml'));
     for (const file of files) {
       const content = readFileSync(join(workflowDir, file), 'utf-8').toLowerCase();
-      for (const kw of keywords) {
-        if (content.includes(kw)) steps.add(kw);
+      for (const { step, pattern } of keywordPatterns) {
+        if (pattern.test(content)) steps.add(step);
       }
     }
   } catch { /* no workflows */ }
@@ -365,6 +393,99 @@ function detectMonorepoWorkspaces(pkgJsonPath: string): string[] {
     if (Array.isArray(workspaces)) return workspaces;
   } catch {}
   return [];
+}
+
+function isCliPackage(pkg: Record<string, unknown>): boolean {
+  const hasBin =
+    typeof pkg.bin === "string" ||
+    (typeof pkg.bin === "object" && pkg.bin !== null && Object.keys(pkg.bin as Record<string, unknown>).length > 0);
+  const hasCliName = typeof pkg.name === "string" && /(^|[-_])cli($|[-_])/.test(pkg.name);
+  const hasCliKeywords =
+    Array.isArray(pkg.keywords) &&
+    pkg.keywords.some((k) => typeof k === "string" && /(cli|command-?line|terminal)/i.test(k));
+  return hasBin || hasCliName || hasCliKeywords;
+}
+
+function detectCliProject(targetDir: string, rootPkgJsonPath: string): boolean {
+  if (existsSync(rootPkgJsonPath)) {
+    try {
+      const rootPkg = JSON.parse(readFileSync(rootPkgJsonPath, "utf-8"));
+      if (isCliPackage(rootPkg)) return true;
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  const pkgJsonFiles = findFiles(targetDir, /^package\.json$/, 4).filter(
+    (f) => f !== rootPkgJsonPath && !f.includes("node_modules")
+  );
+  for (const pkgPath of pkgJsonFiles) {
+    try {
+      const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+      if (isCliPackage(pkg)) return true;
+    } catch {
+      // ignore parse errors
+    }
+  }
+  return false;
+}
+
+function detectCliDiagnosabilitySignals(targetDir: string): string[] {
+  const signals: Set<string> = new Set();
+
+  const readmePath = join(targetDir, "README.md");
+  if (existsSync(readmePath)) {
+    try {
+      const readmeContent = readFileSync(readmePath, "utf-8");
+      if (/\bdoctor\b|\bhealth check\b/i.test(readmeContent)) signals.add("doctor docs");
+    } catch {
+      // ignore read errors
+    }
+  }
+
+  const workflowDir = join(targetDir, ".github", "workflows");
+  if (existsSync(workflowDir)) {
+    try {
+      const files = readdirSync(workflowDir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
+      for (const file of files) {
+        const workflowContent = readFileSync(join(workflowDir, file), "utf-8");
+        if (/\baudit\b|\bdoctor\b/i.test(workflowContent)) {
+          signals.add("ci diagnostic checks");
+          break;
+        }
+      }
+    } catch {
+      // ignore read errors
+    }
+  }
+
+  const sourceFiles = findFiles(targetDir, /^index\.(ts|js|mjs|cjs)$/, 5).filter((f) => !f.includes("node_modules"));
+  for (const file of sourceFiles) {
+    try {
+      const sourceContent = readFileSync(file, "utf-8");
+      if (/function\s+doctor\s*\(|--help|Unknown command|printHelp/i.test(sourceContent)) {
+        signals.add("cli diagnostic command surface");
+        break;
+      }
+    } catch {
+      // ignore read errors
+    }
+  }
+
+  const testFiles = findFiles(targetDir, /\.(test|spec)\.(ts|js|mjs|cjs)$/, 5).filter((f) => !f.includes("node_modules"));
+  for (const file of testFiles) {
+    try {
+      const testContent = readFileSync(file, "utf-8");
+      if (/--help|Unknown command|doctor/i.test(testContent)) {
+        signals.add("cli diagnostic tests");
+        break;
+      }
+    } catch {
+      // ignore read errors
+    }
+  }
+
+  return [...signals];
 }
 
 // ─── Commands ───────────────────────────────────────────────────────────────
@@ -413,6 +534,7 @@ function init(options: InitOptions): void {
   const files: Array<{ path: string; content: string }> = [
     { path: "AGENTS.md", content: agentsMdTemplate(projectName) },
     { path: "ARCHITECTURE.md", content: architectureMdTemplate(projectName) },
+    { path: "risk-policy.json", content: riskPolicyTemplate() },
     { path: "docs/golden-principles.md", content: goldenPrinciplesTemplate() },
     { path: "docs/design-docs/index.md", content: designDocsIndexTemplate() },
     { path: "docs/design-docs/core-beliefs.md", content: coreBeliefsTemplate() },
@@ -438,6 +560,7 @@ function init(options: InitOptions): void {
         next_steps: [
           "Edit AGENTS.md — fill in the project description",
           "Edit ARCHITECTURE.md — define your business domains",
+          "Review risk-policy.json — set tiers and docs drift rules for your repo",
           "Edit docs/golden-principles.md — customize rules for your project",
           "Run 'reins audit .' to see your starting score",
         ],
@@ -653,6 +776,7 @@ function runAudit(targetPath: string): AuditResult {
   const pkgJson = join(targetDir, "package.json");
   const monorepoWorkspaces = existsSync(pkgJson) ? detectMonorepoWorkspaces(pkgJson) : [];
   const isMonorepo = monorepoWorkspaces.length > 0;
+  const isCliRepo = detectCliProject(targetDir, pkgJson);
 
   if (existsSync(pkgJson)) {
     try {
@@ -719,6 +843,16 @@ function runAudit(targetPath: string): AuditResult {
   if (hasTraditionalObs || hasModernObs) {
     result.scores.agent_legibility.score++;
     result.scores.agent_legibility.findings.push("Observability configuration found");
+  } else if (isCliRepo) {
+    const cliDiagSignals = detectCliDiagnosabilitySignals(targetDir);
+    if (cliDiagSignals.length >= 2) {
+      result.scores.agent_legibility.score++;
+      result.scores.agent_legibility.findings.push(
+        `CLI diagnosability signals found (${cliDiagSignals.join(", ")})`
+      );
+    } else {
+      result.scores.agent_legibility.findings.push("No observability or CLI diagnosability signals detected");
+    }
   } else {
     result.scores.agent_legibility.findings.push("No observability stack detected");
   }

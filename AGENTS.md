@@ -25,8 +25,10 @@ See ARCHITECTURE.md for domain map, module structure, and dependency rules.
 | Active Plans | docs/exec-plans/active/ | Current |
 | Completed Plans | docs/exec-plans/completed/ | Current |
 | Technical Debt | docs/exec-plans/tech-debt-tracker.md | Current |
+| Risk Policy | risk-policy.json | Current |
 | Golden Principles | docs/golden-principles.md | Current |
 | CI Pipeline | .github/workflows/ci.yml | Current |
+| Publish Pipeline | .github/workflows/publish.yml | Current |
 
 ## Development Workflow
 

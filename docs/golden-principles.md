@@ -51,3 +51,9 @@ Opinionated mechanical rules that encode human taste. These go beyond standard l
 - Agent reviews check: layer violations, golden principle adherence, test coverage
 - Human reviews focus on: intent alignment, architectural fit, user impact
 - Nit-level feedback is captured as golden principle updates, not blocking comments
+
+## CI Enforcement Strategy
+
+- CI should include explicit gates for `lint`, `test`, `typecheck`, and repo self-`audit`.
+- If lint debt exists, run lint as advisory first, then ratchet to blocking once baseline is reduced.
+- Enforcement checks should prefer explicit patterns over broad keyword matching to avoid false positives.

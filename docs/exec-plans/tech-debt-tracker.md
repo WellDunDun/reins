@@ -10,6 +10,8 @@ Track known technical debt with priority and ownership.
 | TD-004 | Observability check not meaningful for CLI tools | CLI | Low | Open | 2026-02-22 | 2026-02-22 |
 | TD-005 | No plugin system for custom audit dimensions | CLI | Medium | Open | 2026-02-22 | 2026-02-22 |
 | TD-006 | Missing compare/watch/self-correct commands | CLI | Medium | Open | 2026-02-22 | 2026-02-22 |
+| TD-007 | Biome lint baseline too high for blocking CI gate | CLI | Medium | Open | 2026-02-22 | 2026-02-22 |
+| TD-008 | No automated skill eval suite for trigger quality and command behavior | Skill | High | Open | 2026-02-22 | 2026-02-22 |
 
 ## Priority Definitions
 

@@ -1,49 +1,41 @@
 ---
-name: HarnessEngineering
-description: Agent-first development methodology. USE WHEN harness engineering, agent-first, scaffold project, audit codebase, zero manual code, agents.md, repository knowledge, agent legibility.
+name: Reins
+description: Reins CLI skill for scaffold/audit/doctor/evolve workflows. USE WHEN harness engineering, AGENTS.md scaffolding, maturity scoring, risk-policy.json, docs drift, agent-readiness.
 ---
 
-# HarnessEngineering
+# Reins
 
-Apply the Harness Engineering methodology — building and shipping software with zero manually-written code, where humans steer and agents execute.
+Use the Reins CLI to operationalize harness engineering in any repository.
 
-## Customization Check
+## Command Execution Policy
 
-Before executing any workflow, check for user customizations:
-- `~/.claude/skills/CORE/USER/SKILLCUSTOMIZATIONS/HarnessEngineering/`
-- Load PREFERENCES.md if present
+Use this order when running commands:
 
-## Voice Notification
+1. If working inside the Reins repository itself:
+`cd cli/reins && bun src/index.ts <command> ../..`
+2. Otherwise (or if local source is unavailable):
+`npx reins-cli <command> <target-path>`
 
-```bash
-curl -s -X POST http://localhost:8888/notify \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Running the WORKFLOWNAME workflow in the HarnessEngineering skill to ACTION"}' \
-  > /dev/null 2>&1 &
-```
+All Reins commands output deterministic JSON. Prefer parsing JSON output over text matching.
 
-## Core Principles
+## Core Reins Principles
 
-1. **Humans steer, agents execute** — No manually-written code. Every line by agents.
-2. **Repository is the system of record** — All knowledge versioned in-repo, not in Slack/Docs.
-3. **Progressive disclosure** — Short AGENTS.md as map; deep docs elsewhere.
-4. **Agent legibility over human legibility** — Optimize for agent reasoning first.
-5. **Enforce invariants, not implementations** — Linters and structural tests, not code review.
-6. **Garbage collection** — Recurring agents clean drift; pay down debt continuously.
-7. **Corrections are cheap, waiting is expensive** — Minimal blocking merge gates.
-
-For the full methodology reference, run: `SkillSearch('harness methodology')`
+1. **Repository is the system of record** — Knowledge stays in versioned files.
+2. **Humans steer, agents execute** — Prompt-first workflows over manual edits where possible.
+3. **Mechanical enforcement over intent-only docs** — CI and policy-as-code back every rule.
+4. **Progressive disclosure** — AGENTS.md is the map, deep docs hold details.
+5. **Continuous cleanup** — Track debt, docs drift, and stale patterns as first-class work.
 
 ## Workflow Routing
 
 | Trigger | Workflow | File |
 |---------|----------|------|
-| scaffold, init, setup, new project, bootstrap | Scaffold | Workflows/Scaffold.md |
-| audit, score, assess, check, evaluate | Audit | Workflows/Audit.md |
-| evolve, improve, upgrade, mature, level up | Evolve | Workflows/Evolve.md |
+| scaffold, init, setup, bootstrap | Scaffold | Workflows/Scaffold.md |
+| audit, score, assess, doctor, check | Audit | Workflows/Audit.md |
+| evolve, improve, mature, level up | Evolve | Workflows/Evolve.md |
 
 ## Examples
 
-- "Scaffold a harness engineering project in this repo"
-- "Audit this codebase against harness engineering principles"
-- "Evolve this project to the next harness maturity level"
+- "Scaffold this repo for Reins"
+- "Audit this project with Reins and summarize the weakest dimensions"
+- "Evolve this repo to the next Reins maturity level"

@@ -1,6 +1,12 @@
-# Evolve Workflow
+# Reins Evolve Workflow
 
 Upgrade an existing project to the next harness engineering maturity level.
+
+## Default Command
+
+Run:
+- Local source: `cd cli/reins && bun src/index.ts evolve <path>`
+- Package mode: `npx reins-cli evolve <path>`
 
 ## Prerequisites
 

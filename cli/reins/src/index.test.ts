@@ -56,12 +56,14 @@ describe("reins init", () => {
     expect(result.created).toContain("docs/design-docs/core-beliefs.md");
     expect(result.created).toContain("docs/product-specs/index.md");
     expect(result.created).toContain("docs/exec-plans/tech-debt-tracker.md");
+    expect(result.created).toContain("risk-policy.json");
 
     // Verify files exist on disk
     expect(existsSync(join(dir, "AGENTS.md"))).toBe(true);
     expect(existsSync(join(dir, "ARCHITECTURE.md"))).toBe(true);
     expect(existsSync(join(dir, "docs", "golden-principles.md"))).toBe(true);
     expect(existsSync(join(dir, "docs", "design-docs", "index.md"))).toBe(true);
+    expect(existsSync(join(dir, "risk-policy.json"))).toBe(true);
     expect(existsSync(join(dir, "docs", "exec-plans", "active"))).toBe(true);
     expect(existsSync(join(dir, "docs", "exec-plans", "completed"))).toBe(true);
     expect(existsSync(join(dir, "docs", "references"))).toBe(true);
@@ -239,6 +241,8 @@ describe("reins doctor", () => {
     expect(result.summary.failed).toBe(0);
     // Linter and CI will be warnings (not created by init)
     expect(result.summary.warnings).toBeGreaterThanOrEqual(0);
+    const riskCheck = result.checks.find((c: { check: string }) => c.check.includes("risk-policy"));
+    expect(riskCheck?.status).toBe("pass");
   });
 
   test("provides actionable fix instructions", async () => {
@@ -519,6 +523,44 @@ describe("D3: Agent Legibility — monorepo and observability", () => {
       expect.arrayContaining([expect.stringContaining("Lean workspace dependencies")])
     );
   });
+
+  test("CLI repos can satisfy observability via diagnosability signals", async () => {
+    const dir = tmpDir("d3-cli-diagnosability");
+    writeFileSync(
+      join(dir, "package.json"),
+      JSON.stringify({
+        name: "example-cli",
+        bin: { "example-cli": "bin/example-cli.js" },
+        scripts: { start: "node index.js" },
+      })
+    );
+    writeFileSync(join(dir, "README.md"), "# Example CLI\n\nRun `example-cli doctor` for diagnostics.\n");
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src", "index.ts"), "export function doctor() { return true; }\n");
+    writeFileSync(join(dir, "index.test.ts"), 'test("help", () => "--help Unknown command doctor");\n');
+
+    const { stdout } = await runCli(`audit ${dir}`);
+    const result = JSON.parse(stdout);
+
+    expect(result.scores.agent_legibility.findings).toEqual(
+      expect.arrayContaining([expect.stringContaining("CLI diagnosability signals found")])
+    );
+  });
+
+  test("non-CLI repos still require observability signals", async () => {
+    const dir = tmpDir("d3-non-cli-no-obs");
+    writeFileSync(
+      join(dir, "package.json"),
+      JSON.stringify({ name: "web-app", scripts: { dev: "next dev" }, dependencies: { react: "^18" } })
+    );
+
+    const { stdout } = await runCli(`audit ${dir}`);
+    const result = JSON.parse(stdout);
+
+    expect(result.scores.agent_legibility.findings).toEqual(
+      expect.arrayContaining([expect.stringContaining("No observability stack detected")])
+    );
+  });
 });
 
 describe("D4: Golden Principles — depth checks", () => {
@@ -648,6 +690,22 @@ describe("D5: Agent Workflow — tightened checks", () => {
     writeFileSync(
       join(dir, ".github", "workflows", "deploy.yml"),
       "name: Deploy\njobs:\n  deploy:\n    steps:\n      - run: echo deploying\n"
+    );
+
+    const { stdout } = await runCli(`audit ${dir}`);
+    const result = JSON.parse(stdout);
+
+    expect(result.scores.agent_workflow.findings).toEqual(
+      expect.arrayContaining([expect.stringContaining("lack sufficient enforcement")])
+    );
+  });
+
+  test("does not treat actions/checkout as an enforcement gate", async () => {
+    const dir = tmpDir("d5-ci-checkout-only");
+    mkdirSync(join(dir, ".github", "workflows"), { recursive: true });
+    writeFileSync(
+      join(dir, ".github", "workflows", "ci.yml"),
+      "name: CI\njobs:\n  setup:\n    steps:\n      - uses: actions/checkout@v4\n"
     );
 
     const { stdout } = await runCli(`audit ${dir}`);

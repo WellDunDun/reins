@@ -20,9 +20,17 @@ jobs:
         working-directory: cli/reins
         run: bun install
 
+      - name: Lint
+        continue-on-error: true
+        run: bun run lint
+
       - name: Run tests
         working-directory: cli/reins
         run: bun test
+
+      - name: Typecheck
+        working-directory: cli/reins
+        run: bunx tsc --noEmit
 
       - name: Self-audit
         working-directory: cli/reins

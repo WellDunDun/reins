@@ -3,6 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/reins-cli.svg)](https://www.npmjs.com/package/reins-cli)
 [![CI](https://img.shields.io/github/actions/workflow/status/WellDunDun/reins/ci.yml?branch=master&label=CI)](https://github.com/WellDunDun/reins/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/WellDunDun/reins?utm_source=oss&utm_medium=github&utm_campaign=WellDunDun%2Freins&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://www.npmjs.com/package/reins-cli)
 [![Node](https://img.shields.io/badge/node-%3E%3D18-green.svg)](https://nodejs.org/)
 [![Bun](https://img.shields.io/badge/bun-%3E%3D1.0-f472b6.svg)](https://bun.sh/)
@@ -11,13 +12,34 @@ The open-source toolkit for [Harness Engineering](https://openai.com/index/harne
 
 OpenAI published the methodology. We built the tooling.
 
-## What this does
+## Quick start
 
-**Score any repo** against harness engineering principles. **Scaffold** the full structure. **Evolve** to the next maturity level.
+**1. Install the skill** so your agent knows how to use Reins:
+
+```bash
+npx skills add WellDunDun/reins
+```
+
+The skill teaches your agent when and how to run every Reins command — command priority (local source vs. npx), JSON output parsing, and when to pair `audit` with `doctor` for remediation detail. Once installed, you talk:
 
 ```
-$ reins audit .
+You:   "Audit this codebase and show me the weakest dimensions"
+Agent: runs reins audit, parses JSON, summarizes gaps
 
+You:   "Scaffold harness engineering in this repo"
+Agent: runs reins init, then walks you through customization
+
+You:   "Evolve to the next maturity level"
+Agent: runs audit, identifies current level, executes the evolution path
+```
+
+**2. Or run the CLI directly** for a quick score without the skill:
+
+```bash
+npx reins-cli audit .
+```
+
+```json
 {
   "total_score": 6,
   "max_score": 18,
@@ -30,19 +52,69 @@ $ reins audit .
 }
 ```
 
-## Quick start
+## Why teams adopt Reins
 
-```bash
-# Install globally (requires Bun or Node)
-npx reins-cli audit .
+Most agent rollouts fail for one boring reason: agents can edit code, but the repository doesn't teach them how to reason safely.
 
-# Or clone and link
-git clone https://github.com/WellDunDun/reins.git
-cd reins/cli/reins
-bun install && bun link
+Reins gives you a repeatable operating system for agent work:
+- **A map** (`AGENTS.md`, architecture docs, indexed decisions)
+- **A score** (0-18 maturity audit with concrete gaps)
+- **A plan** (next-step evolution path by maturity level)
+- **A guardrail model** (`risk-policy.json` + CI enforcement signals)
+
+## Where Reins fits
+
+Agent-first development has multiple layers. Reins operates at the **repository structure layer** — complementary to session orchestration tools, not competing with them.
+
+```mermaid
+block-beta
+    columns 1
+    block:L3:1
+        columns 2
+        A["SESSION EXECUTION"] B["GSD, Flow-Next, etc."]
+    end
+    block:L2:1
+        columns 2
+        C["REPO READINESS"] D["Reins"]
+    end
+    block:L1:1
+        columns 2
+        E["THE CODEBASE"] F["Your project"]
+    end
+
+    style L3 fill:#1e293b,stroke:#3b82f6,color:#e2e8f0
+    style L2 fill:#1e3a5f,stroke:#60a5fa,color:#e2e8f0
+    style L1 fill:#0f172a,stroke:#475569,color:#94a3b8
+    style A fill:transparent,stroke:none,color:#93c5fd
+    style B fill:transparent,stroke:none,color:#64748b
+    style C fill:transparent,stroke:none,color:#60a5fa
+    style D fill:transparent,stroke:none,color:#f472b6
+    style E fill:transparent,stroke:none,color:#93c5fd
+    style F fill:transparent,stroke:none,color:#64748b
 ```
 
-Four commands:
+| Concern | Reins | Session orchestrators |
+|---------|-------|----------------------|
+| When you use it | Once per repo, then evolve periodically | Every coding session |
+| What it produces | Docs, audit scores, maturity roadmaps | Working code |
+| What it prevents | Organizational rot, undocumented architecture | Context rot, wasted tokens |
+
+**Use them together.** Reins scaffolds your repo so `AGENTS.md` tells the agent where everything is, `ARCHITECTURE.md` defines the rules, and golden principles are enforced in CI. Then a session orchestrator runs the actual coding work on top of that well-structured repo.
+
+## The four commands
+
+```mermaid
+graph LR
+    Init["reins init\nScaffold"] --> Audit["reins audit\nScore 0-18"]
+    Audit --> Evolve["reins evolve\nLevel up"]
+    Evolve --> Doctor["reins doctor\nHealth check"]
+    Doctor --> Audit
+
+    style Init fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
+    style Audit fill:#1e3a5f,stroke:#60a5fa,color:#e2e8f0
+    style Evolve fill:#1e3a5f,stroke:#818cf8,color:#e2e8f0
+    style Doctor fill:#1e3a5f,stroke:#a78bfa,color:#e2e8f0
+```
 
 ```bash
 reins init .           # Scaffold the full structure
@@ -53,25 +125,36 @@ reins doctor .         # Health check with prescriptive fixes
 
 ## The maturity model
 
-Every repo sits on a maturity spectrum. The audit tells you where you are. The evolve workflow tells you what to do next.
+Every repo sits on a maturity spectrum. The audit tells you where you are. The evolve command tells you what to do next.
 
+```mermaid
+graph LR
+    L0["L0: Manual\n0-4"] --> L1["L1: Assisted\n5-8"]
+    L1 --> L2["L2: Steered\n9-13"]
+    L2 --> L3["L3: Autonomous\n14-16"]
+    L3 --> L4["L4: Self-Correcting\n17-18"]
+
+    style L0 fill:#1e293b,stroke:#475569,color:#94a3b8
+    style L1 fill:#1e293b,stroke:#3b82f6,color:#93c5fd
+    style L2 fill:#1e3a5f,stroke:#60a5fa,color:#e2e8f0
+    style L3 fill:#1e3a5f,stroke:#818cf8,color:#e2e8f0
+    style L4 fill:#312e81,stroke:#a78bfa,color:#e2e8f0
 ```
-Score   Level                What it means
-─────   ─────                ──────────────
-0-4     L0: Manual           Traditional engineering, no agent infra
-5-8     L1: Assisted         Agents help, humans still write code
-9-13    L2: Steered          Humans steer, agents execute most code
-14-16   L3: Autonomous       Agents handle full lifecycle
-17-18   L4: Self-Correcting  System maintains and improves itself
-```
 
-## What it scaffolds
+| Score | Level | What it means |
+|-------|-------|---------------|
+| 0-4 | **L0: Manual** | Traditional engineering, no agent infra |
+| 5-8 | **L1: Assisted** | Agents help, humans still write code |
+| 9-13 | **L2: Steered** | Humans steer, agents execute most code |
+| 14-16 | **L3: Autonomous** | Agents handle full lifecycle |
+| 17-18 | **L4: Self-Correcting** | System maintains and improves itself |
 
-Running `reins init .` creates:
+## What `reins init` scaffolds
 
 ```
 AGENTS.md                        # Concise map (~100 lines) for agents
 ARCHITECTURE.md                  # Domain map, layer rules, dependency direction
+risk-policy.json                 # Risk tiers + docs drift rules (policy-as-code)
 docs/
   golden-principles.md           # Mechanical taste rules enforced in CI
   design-docs/
@@ -91,65 +174,55 @@ docs/
 
 Each scored 0-3, totaling 0-18:
 
+```mermaid
+graph TD
+    Score["Total Score\n0-18"]
+    RK["Repository Knowledge\n0-3"]
+    AE["Architecture Enforcement\n0-3"]
+    AL["Agent Legibility\n0-3"]
+    GP["Golden Principles\n0-3"]
+    AW["Agent Workflow\n0-3"]
+    GC["Garbage Collection\n0-3"]
+
+    RK --> Score
+    AE --> Score
+    AL --> Score
+    GP --> Score
+    AW --> Score
+    GC --> Score
+
+    style Score fill:#312e81,stroke:#a78bfa,color:#e2e8f0
+    style RK fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
+    style AE fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
+    style AL fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
+    style GP fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
+    style AW fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
+    style GC fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
+```
+
 | Dimension | What it checks |
 |-----------|---------------|
 | **Repository Knowledge** | AGENTS.md, docs/, versioned execution plans |
-| **Architecture Enforcement** | ARCHITECTURE.md, dependency rules, linters |
-| **Agent Legibility** | Bootable app, observability, lean dependencies |
-| **Golden Principles** | Documented taste rules, CI enforcement, cleanup process |
-| **Agent Workflow** | Agent config, PR templates, merge gates |
-| **Garbage Collection** | Debt tracking, doc-gardening, quality grades |
+| **Architecture Enforcement** | ARCHITECTURE.md, dependency rules, linters, policy signals |
+| **Agent Legibility** | Bootable app, observability (or CLI diagnosability), lean dependencies |
+| **Golden Principles** | Documented taste rules, CI gate depth, cleanup process |
+| **Agent Workflow** | Agent config, risk policy, PR templates, CI enforcement |
+| **Garbage Collection** | Debt tracking, doc-gardening, quality grades, docs drift rules |
 
-## Claude Code skill
+## Self-apply: 18/18
 
-This repo also includes a Claude Code skill for AI-native integration. The skill provides three workflows — Scaffold, Audit, and Evolve — that work inside Claude Code sessions.
+Reins audits itself in CI. Current score:
 
-To install the skill, copy `skill/Reins/` to `~/.claude/skills/Reins/`.
-
-Then use natural language:
-- "Scaffold a harness engineering project in this repo"
-- "Audit this codebase against harness engineering principles"
-- "Evolve this project to the next maturity level"
-
-## Where reins fits in the ecosystem
-
-Agent-first development has multiple layers. Reins operates at the **repository structure layer** — it's complementary to session orchestration tools, not competing with them.
-
-```
-Layer 3: SESSION EXECUTION       GSD, Flow-Next, etc.
-         How agents do work in a given coding session
-
-Layer 2: REPO READINESS          Reins
-         Is the repo structured so agents can succeed?
-
-Layer 1: THE CODEBASE
+```json
+{
+  "total_score": 18,
+  "max_score": 18,
+  "maturity_level": "L4: Self-Correcting"
+}
 ```
 
-**Session orchestrators** (like [GSD](https://github.com/gsd-build/get-shit-done) and [Flow-Next](https://github.com/gmickel/flow-next-opencode)) manage how work flows *during a session* — decomposing tasks, maintaining fresh context, verifying results. They fight context rot (agent quality degrading as the context window fills).
-
-**Reins** ensures the repository itself is agent-legible *before any session starts*. It fights organizational rot — knowledge trapped in human heads, no architectural guardrails, no mechanical enforcement of taste.
-
-| Concern | Reins | Session orchestrators |
-|---------|-------|----------------------|
-| When you use it | Once per repo, then evolve periodically | Every coding session |
-| What it produces | Docs, audit scores, maturity roadmaps | Working code |
-| What it prevents | Organizational rot, undocumented architecture | Context rot, wasted tokens |
-| Scope | Repository-wide structure | Single session / task |
-
-**Use them together.** Reins scaffolds your repo so `AGENTS.md` tells the agent where everything is, `ARCHITECTURE.md` defines the rules, and golden principles are enforced in CI. Then a session orchestrator runs the actual coding work on top of that well-structured repo.
-
-## Why open source
-
-The Harness Engineering methodology was published by OpenAI in February 2026. It describes how they built a product with zero manually-written code — humans designed the environment and agents wrote everything.
-
-The paper is compelling. But it shipped without tooling. No scaffolding, no audit framework, no maturity model implementation. Teams that wanted to adopt the methodology had to build their own infrastructure from scratch.
-
-This project fills that gap. Open-sourcing it means:
-
-- **Anyone can adopt agent-first development** without building tooling from zero
-- **The audit framework becomes a shared standard** — teams can compare maturity levels using the same scoring rubric
-- **The community can evolve the methodology** — the paper is a snapshot, but practices improve through iteration
-- **Transparency builds trust** — teams making fundamental workflow changes need to understand and verify the tools they use
+CI gates: `lint`, `test`, `typecheck`, self-`audit`. Merging to `master` auto-publishes to npm with a patch version bump and creates a GitHub Release.
+For CLI repositories, Reins treats strong diagnosability signals (for example `doctor` surfaces, CLI diagnostics in CI, and help/error coverage) as the equivalent of service observability infrastructure.
 
 ## Project structure
 
@@ -158,7 +231,7 @@ reins/
   cli/reins/            # The CLI tool (Bun + TypeScript, zero deps)
     src/index.ts        # Single-file CLI
     package.json
-  skill/                # Claude Code skill
+  skill/                # Agent skill (Claude Code)
     Reins/
       SKILL.md          # Skill definition and routing
       HarnessMethodology.md  # Full methodology reference

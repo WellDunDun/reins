@@ -6,7 +6,7 @@
     "dev": "cd cli/reins && bun --watch src/index.ts",
     "test": "cd cli/reins && bun test",
     "audit:self": "cd cli/reins && bun src/index.ts audit ../...",
-    "lint": "bunx @biomejs/biome check ."
+    "lint": "bunx @biomejs/biome@1.9.4 check ."
   },
   "license": "MIT"
 }
