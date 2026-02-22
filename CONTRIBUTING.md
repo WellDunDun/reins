@@ -6,7 +6,7 @@ Thanks for your interest in improving the harness engineering toolkit.
 
 ```bash
 git clone https://github.com/WellDunDun/harness-engineering.git
-cd harness-engineering/cli/harness
+cd harness-engineering/cli/reins
 bun install
 ```
 
@@ -22,9 +22,8 @@ bun src/index.ts audit /path/to/any/repo
 
 - **Audit heuristics** — improve detection accuracy for each of the six dimensions
 - **New language support** — the audit currently assumes JS/TS ecosystems; Go, Rust, Python repos need attention
-- **`harness evolve` command** — the CLI has `init`, `audit`, `doctor` but `evolve` only exists as a skill workflow
-- **Tests** — the CLI has zero tests; adding coverage for audit scoring logic would be valuable
-- **CI pipeline** — GitHub Actions for lint, test, and npm publish
+- **New commands** — `compare` to diff two audits over time, `watch` for continuous scoring
+- **Plugin system** — let teams add custom audit dimensions
 
 **Before starting large changes**, open an issue to discuss the approach.
 
@@ -33,7 +32,7 @@ bun src/index.ts audit /path/to/any/repo
 - Keep PRs focused — one concern per PR
 - All output is deterministic JSON — new commands should follow this pattern
 - Zero external dependencies is a feature, not a limitation — justify any new dependency
-- Run `harness audit .` on this repo itself before submitting
+- Run `reins audit .` on this repo itself before submitting
 
 ## Code style
 

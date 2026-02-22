@@ -41,7 +41,7 @@ afterEach(() => {
 
 // ─── Init Command ───────────────────────────────────────────────────────────
 
-describe("harness init", () => {
+describe("reins init", () => {
   test("creates all expected files in empty directory", async () => {
     const dir = tmpDir("init-basic");
     const { stdout, exitCode } = await runCli(`init ${dir}`);
@@ -111,7 +111,7 @@ describe("harness init", () => {
 
 // ─── Audit Command ──────────────────────────────────────────────────────────
 
-describe("harness audit", () => {
+describe("reins audit", () => {
   test("scores an empty directory as L0: Manual", async () => {
     const dir = tmpDir("audit-empty");
     const { stdout, exitCode } = await runCli(`audit ${dir}`);
@@ -216,7 +216,7 @@ describe("harness audit", () => {
 
 // ─── Doctor Command ─────────────────────────────────────────────────────────
 
-describe("harness doctor", () => {
+describe("reins doctor", () => {
   test("reports all failures for empty directory", async () => {
     const dir = tmpDir("doctor-empty");
     const { stdout, exitCode } = await runCli(`doctor ${dir}`);
@@ -235,7 +235,7 @@ describe("harness doctor", () => {
     const { stdout } = await runCli(`doctor ${dir}`);
     const result = JSON.parse(stdout);
 
-    // All harness-created files should pass
+    // All reins-created files should pass
     expect(result.summary.failed).toBe(0);
     // Linter and CI will be warnings (not created by init)
     expect(result.summary.warnings).toBeGreaterThanOrEqual(0);
@@ -256,7 +256,7 @@ describe("harness doctor", () => {
 
 // ─── Evolve Command ─────────────────────────────────────────────────────────
 
-describe("harness evolve", () => {
+describe("reins evolve", () => {
   test("shows L0 → L1 path for empty directory", async () => {
     const dir = tmpDir("evolve-empty");
     const { stdout, exitCode } = await runCli(`evolve ${dir}`);
@@ -300,11 +300,11 @@ describe("harness evolve", () => {
 
 // ─── Help & Error Handling ──────────────────────────────────────────────────
 
-describe("harness help", () => {
+describe("reins help", () => {
   test("shows help with no arguments", async () => {
     const { stdout, exitCode } = await runCli("help");
     expect(exitCode).toBe(0);
-    expect(stdout).toContain("harness");
+    expect(stdout).toContain("reins");
     expect(stdout).toContain("init");
     expect(stdout).toContain("audit");
     expect(stdout).toContain("evolve");

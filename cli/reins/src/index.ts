@@ -330,7 +330,7 @@ function init(options: InitOptions): void {
     console.error(
       JSON.stringify({
         error: "AGENTS.md already exists. Use --force to overwrite.",
-        hint: "Run 'harness audit' to assess your current setup instead.",
+        hint: "Run 'reins audit' to assess your current setup instead.",
       })
     );
     process.exit(1);
@@ -386,7 +386,7 @@ function init(options: InitOptions): void {
           "Edit AGENTS.md — fill in the project description",
           "Edit ARCHITECTURE.md — define your business domains",
           "Edit docs/golden-principles.md — customize rules for your project",
-          "Run 'harness audit .' to see your starting score",
+          "Run 'reins audit .' to see your starting score",
         ],
       },
       null,
@@ -437,7 +437,7 @@ function runAudit(targetPath: string): AuditResult {
     }
   } else {
     result.scores.repository_knowledge.findings.push("AGENTS.md missing");
-    result.recommendations.push("Create AGENTS.md as a concise map (~100 lines) — run 'harness init .'");
+    result.recommendations.push("Create AGENTS.md as a concise map (~100 lines) — run 'reins init .'");
   }
 
   const docsDir = join(targetDir, "docs");
@@ -454,7 +454,7 @@ function runAudit(targetPath: string): AuditResult {
     }
   } else {
     result.scores.repository_knowledge.findings.push("docs/ directory missing");
-    result.recommendations.push("Create docs/ directory structure — run 'harness init .'");
+    result.recommendations.push("Create docs/ directory structure — run 'reins init .'");
   }
 
   const execPlans = join(targetDir, "docs", "exec-plans");
@@ -698,7 +698,7 @@ function doctor(targetPath: string): void {
     checks.push({
       check: "AGENTS.md missing",
       status: "fail",
-      fix: "Run 'harness init .' to create AGENTS.md",
+      fix: "Run 'reins init .' to create AGENTS.md",
     });
   }
 
@@ -709,7 +709,7 @@ function doctor(targetPath: string): void {
     checks.push({
       check: "ARCHITECTURE.md missing",
       status: "fail",
-      fix: "Run 'harness init .' to create ARCHITECTURE.md",
+      fix: "Run 'reins init .' to create ARCHITECTURE.md",
     });
   }
 
@@ -729,7 +729,7 @@ function doctor(targetPath: string): void {
       checks.push({
         check: `${doc} missing`,
         status: "fail",
-        fix: `Run 'harness init .' to create missing files`,
+        fix: `Run 'reins init .' to create missing files`,
       });
     }
   }
@@ -800,7 +800,7 @@ const EVOLUTION_PATHS: Record<string, EvolutionPath> = {
     to: "L1: Assisted",
     goal: "Get agents into the development loop",
     steps: [
-      { step: 1, action: "Create AGENTS.md", description: "Concise map (~100 lines) pointing agents to deeper docs. Run 'harness init .' to generate.", automated: true },
+      { step: 1, action: "Create AGENTS.md", description: "Concise map (~100 lines) pointing agents to deeper docs. Run 'reins init .' to generate.", automated: true },
       { step: 2, action: "Create docs/ structure", description: "Design docs, product specs, references, execution plans — all versioned in-repo.", automated: true },
       { step: 3, action: "Document architecture", description: "ARCHITECTURE.md with domain map, layer ordering, and dependency direction rules.", automated: true },
       { step: 4, action: "Set up agent-friendly CI", description: "Fast feedback, clear error messages, deterministic output. Agents need to parse CI results.", automated: false },
@@ -895,7 +895,7 @@ function evolve(targetPath: string, runInit: boolean): void {
     const agentsMd = join(targetDir, "AGENTS.md");
     if (!existsSync(agentsMd)) {
       init({ path: targetPath, name: "", force: false });
-      applied.push("Ran 'harness init' to scaffold missing structure");
+      applied.push("Ran 'reins init' to scaffold missing structure");
     }
   }
 
@@ -929,10 +929,10 @@ function evolve(targetPath: string, runInit: boolean): void {
 // ─── CLI Router ─────────────────────────────────────────────────────────────
 
 function printHelp(): void {
-  const help = `harness — Harness Engineering CLI
+  const help = `reins — Harness Engineering CLI
 
 USAGE:
-  harness <command> [options]
+  reins <command> [options]
 
 COMMANDS:
   init <path>     Scaffold harness engineering structure in target directory
@@ -948,12 +948,12 @@ OPTIONS:
   --json          Force JSON output (default)
 
 EXAMPLES:
-  harness init .                    # Scaffold in current directory
-  harness init ./my-project --name "My Project"
-  harness audit .                   # Score current project
-  harness evolve .                  # Get evolution roadmap
-  harness evolve . --apply          # Evolve with auto-scaffolding
-  harness doctor .                  # Get prescriptive fixes
+  reins init .                    # Scaffold in current directory
+  reins init ./my-project --name "My Project"
+  reins audit .                   # Score current project
+  reins evolve .                  # Get evolution roadmap
+  reins evolve . --apply          # Evolve with auto-scaffolding
+  reins doctor .                  # Get prescriptive fixes
 
 MATURITY LEVELS:
   L0: Manual          (0-4)   Traditional engineering
@@ -1008,7 +1008,7 @@ function main(): void {
       break;
     }
     default:
-      console.error(JSON.stringify({ error: `Unknown command: ${command}`, hint: "Run 'harness help'" }));
+      console.error(JSON.stringify({ error: `Unknown command: ${command}`, hint: "Run 'reins help'" }));
       process.exit(1);
   }
 }

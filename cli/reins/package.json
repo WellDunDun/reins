@@ -1,5 +1,5 @@
 {
-  "name": "harness-cli",
+  "name": "reins",
   "version": "0.1.0",
   "description": "Scaffold, audit, and evolve projects using the Harness Engineering methodology",
   "type": "module",
@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/WellDunDun/harness-engineering.git",
-    "directory": "cli/harness"
+    "directory": "cli/reins"
   },
   "homepage": "https://github.com/WellDunDun/harness-engineering#readme",
   "bugs": {
@@ -26,10 +26,11 @@
     "openai"
   ],
   "bin": {
-    "harness": "./src/index.ts"
+    "reins": "./bin/reins.js"
   },
   "files": [
     "src/",
+    "bin/",
     "README.md",
     "LICENSE"
   ],

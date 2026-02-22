@@ -17,13 +17,13 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        working-directory: cli/harness
+        working-directory: cli/reins
         run: bun install
 
       - name: Run tests
-        working-directory: cli/harness
+        working-directory: cli/reins
         run: bun test
 
       - name: Self-audit
-        working-directory: cli/harness
+        working-directory: cli/reins
         run: bun src/index.ts audit ../..

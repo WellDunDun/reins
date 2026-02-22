@@ -1,4 +1,4 @@
-# harness-engineering
+# reins
 
 The open-source toolkit for [Harness Engineering](https://openai.com/index/harness-engineering/) — OpenAI's methodology for building software where **humans steer and agents execute**.
 
@@ -9,7 +9,7 @@ OpenAI published the methodology. We built the tooling.
 **Score any repo** against harness engineering principles. **Scaffold** the full structure. **Evolve** to the next maturity level.
 
 ```
-$ harness audit .
+$ reins audit .
 
 {
   "total_score": 6,
@@ -26,22 +26,22 @@ $ harness audit .
 ## Quick start
 
 ```bash
-# Install (requires Bun)
-bunx harness-cli audit .
+# Install globally (requires Bun or Node)
+npx reins audit .
 
-# Or clone and link globally
+# Or clone and link
 git clone https://github.com/WellDunDun/harness-engineering.git
-cd harness-engineering/cli/harness
+cd harness-engineering/cli/reins
 bun install && bun link
 ```
 
 Four commands:
 
 ```bash
-harness init .           # Scaffold the full structure
-harness audit .          # Score against harness principles (0-18)
-harness evolve .         # Roadmap to next maturity level
-harness doctor .         # Health check with prescriptive fixes
+reins init .           # Scaffold the full structure
+reins audit .          # Score against harness principles (0-18)
+reins evolve .         # Roadmap to next maturity level
+reins doctor .         # Health check with prescriptive fixes
 ```
 
 ## The maturity model
@@ -60,7 +60,7 @@ Score   Level                What it means
 
 ## What it scaffolds
 
-Running `harness init .` creates:
+Running `reins init .` creates:
 
 ```
 AGENTS.md                        # Concise map (~100 lines) for agents
@@ -97,7 +97,7 @@ Each scored 0-3, totaling 0-18:
 
 This repo also includes a Claude Code skill for AI-native integration. The skill provides three workflows — Scaffold, Audit, and Evolve — that work inside Claude Code sessions.
 
-To install the skill, copy `skill/HarnessEngineering/` to `~/.claude/skills/HarnessEngineering/`.
+To install the skill, copy `skill/Reins/` to `~/.claude/skills/Reins/`.
 
 Then use natural language:
 - "Scaffold a harness engineering project in this repo"
@@ -121,11 +121,11 @@ This project fills that gap. Open-sourcing it means:
 
 ```
 harness-engineering/
-  cli/harness/          # The CLI tool (Bun + TypeScript, zero deps)
-    src/index.ts        # Single-file CLI (~850 lines)
+  cli/reins/            # The CLI tool (Bun + TypeScript, zero deps)
+    src/index.ts        # Single-file CLI
     package.json
   skill/                # Claude Code skill
-    HarnessEngineering/
+    Reins/
       SKILL.md          # Skill definition and routing
       HarnessMethodology.md  # Full methodology reference
       Workflows/
@@ -136,7 +136,7 @@ harness-engineering/
 
 ## Requirements
 
-- [Bun](https://bun.sh/) v1.0+
+- [Bun](https://bun.sh/) v1.0+ or Node.js 18+
 - No other dependencies
 
 ## Contributing

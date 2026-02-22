@@ -1,4 +1,4 @@
-# harness — Harness Engineering CLI
+# reins — Harness Engineering CLI
 
 Scaffold, audit, and evolve projects using the [Harness Engineering](https://openai.com/index/harness-engineering/) methodology.
 
@@ -9,29 +9,26 @@ A development methodology where **humans steer and agents execute**. All code �
 ## Install
 
 ```bash
-# Clone and link
-git clone <repo-url>
-cd cli/harness
+# From npm
+npx reins audit .
+
+# Or clone and link
+git clone https://github.com/WellDunDun/harness-engineering.git
+cd cli/reins
 bun install
 bun link
 ```
 
-Or run directly:
-
-```bash
-bun /path/to/cli/harness/src/index.ts <command>
-```
-
 ## Commands
 
-### `harness init <path>`
+### `reins init <path>`
 
 Scaffold the full harness engineering structure in a directory:
 
 ```bash
-harness init .
-harness init ./my-project --name "My Project"
-harness init . --force  # Overwrite existing files
+reins init .
+reins init ./my-project --name "My Project"
+reins init . --force  # Overwrite existing files
 ```
 
 Creates:
@@ -45,12 +42,12 @@ Creates:
 - `docs/references/` — External LLM-friendly reference docs
 - `docs/generated/` — Auto-generated documentation
 
-### `harness audit <path>`
+### `reins audit <path>`
 
 Score a project against harness engineering principles (0-18):
 
 ```bash
-harness audit .
+reins audit .
 ```
 
 Scores six dimensions (0-3 each):
@@ -68,23 +65,23 @@ Returns a maturity level:
 - **L3: Autonomous** (14-16) — Agents handle full lifecycle
 - **L4: Self-Correcting** (17-18) — System maintains itself
 
-### `harness evolve <path>`
+### `reins evolve <path>`
 
 Show the evolution path from your current maturity level to the next:
 
 ```bash
-harness evolve .
-harness evolve . --apply   # Auto-run scaffolding steps
+reins evolve .
+reins evolve . --apply   # Auto-run scaffolding steps
 ```
 
 Runs an audit, identifies your current level, and returns a step-by-step roadmap to level up — including which steps are automatable and which require human decisions.
 
-### `harness doctor <path>`
+### `reins doctor <path>`
 
 Check project health with prescriptive fixes:
 
 ```bash
-harness doctor .
+reins doctor .
 ```
 
 Returns pass/fail/warn for each check with specific fix instructions.
@@ -94,8 +91,8 @@ Returns pass/fail/warn for each check with specific fix instructions.
 All commands output deterministic JSON, making them composable with other tools:
 
 ```bash
-harness audit . | jq '.maturity_level'
-harness doctor . | jq '.checks[] | select(.status == "fail")'
+reins audit . | jq '.maturity_level'
+reins doctor . | jq '.checks[] | select(.status == "fail")'
 ```
 
 ## Methodology
@@ -111,6 +108,6 @@ Based on OpenAI's internal experiment building a product with zero manually-writ
 
 ## Runtime
 
-- **Runtime:** Bun
+- **Runtime:** Bun or Node.js
 - **Language:** TypeScript
 - **Output:** JSON
