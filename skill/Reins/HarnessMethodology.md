@@ -106,6 +106,40 @@ Agent validates codebase, reproduces bug, implements fix, validates fix, opens P
 - Test flakes addressed with follow-up runs, not blocking
 - Corrections are cheap; waiting is expensive
 
+## Patterns from Production
+
+Real-world signals observed in production harness-engineered codebases that indicate mature practices:
+
+### 1. Risk Policy as Code
+`risk-policy.json` defines risk tiers, watch paths, and escalation rules. Enables automated decisions about review depth and deployment gates.
+
+### 2. Verification Headers
+`<!-- Verified: DATE | Status -->` headers in documentation files. Enables automated freshness tracking and doc-gardening.
+
+### 3. Doc-Gardener Automation
+Freshness scripts in CI that scan for stale docs, missing verification headers, and orphaned references. Runs on a cadence, not just at PR time.
+
+### 4. Hierarchical AGENTS.md
+Per-package AGENTS.md files in monorepos. Each package has its own discoverable context, avoiding a single monolithic file that rots instantly.
+
+### 5. Design Decision Records with Consequences
+Design docs that track not just the decision but also the consequences, trade-offs, and verification status. Indexed in `design-docs/index.md`.
+
+### 6. Execution Plan Culture
+Workstream tracking with versioned execution plans in-repo. Active plans, completed plans, and tech debt tracked as first-class artifacts.
+
+### 7. Quality Grades per Domain
+A/B/C/D grades assigned per domain and architectural layer. Provides clear visibility into where quality is strong and where cleanup is needed.
+
+### 8. Lint Baseline/Ratchet Mechanism
+Structural lint rules that only tighten over time. New violations fail CI, but existing violations are baselined and reduced incrementally.
+
+### 9. Product Specs as Harness Artifacts
+Product requirements versioned in-repo alongside design docs and execution plans. Agents can reference specs directly rather than relying on external tools.
+
+### 10. i18n as Schema Constraint
+Internationalization treated as a structural schema constraint rather than an afterthought. Enforced at the type level, not bolted on later.
+
 ## Anti-Patterns
 
 - One giant AGENTS.md (context starvation, instant rot)

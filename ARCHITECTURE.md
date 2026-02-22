@@ -1,64 +1,63 @@
-# Architecture — porto-v2
+# Architecture — reins
 
 ## Domain Map
 
-<!-- List your business domains here. Each domain follows the layered architecture. -->
-
 | Domain | Description | Quality Grade |
 |--------|-------------|---------------|
-| Core | Core business logic | — |
-| Auth | Authentication and authorization | — |
-| UI | User interface components | — |
+| CLI | Command-line tool: init, audit, evolve, doctor | B |
+| Skill | Claude Code skill integration and workflows | B |
+| Docs | In-repo knowledge base (golden principles, beliefs, specs) | A |
 
-## Layered Architecture
+## Module Structure
 
-Each domain follows a strict layer ordering. Dependencies flow forward only.
+reins is a single-file CLI tool. The architecture is function-based, not layered.
 
 ```
-Utils
+cli/reins/src/index.ts
   |
-  v
-Business Domain
-  +-- Types --> Config --> Repo --> Service --> Runtime --> UI
-  |
-  +-- Providers (cross-cutting: auth, connectors, telemetry, feature flags)
-        |
-        v
-      App Wiring + UI
+  +-- Types (interfaces: AuditScore, AuditResult, InitOptions, EvolutionStep, EvolutionPath)
+  +-- Templates (agentsMdTemplate, architectureMdTemplate, goldenPrinciplesTemplate, ...)
+  +-- Commands (init, runAudit, audit, doctor, evolve)
+  +-- CLI Router (main, printHelp, flag parsing)
 ```
 
-### Layer Definitions
+### Dependency Direction
 
-| Layer | Responsibility | May Import From |
-|-------|---------------|-----------------|
-| Types | Data shapes, enums, interfaces | Utils |
-| Config | Configuration loading, validation | Types, Utils |
-| Repo | Data access, storage | Config, Types, Utils |
-| Service | Business logic orchestration | Repo, Config, Types, Utils |
-| Runtime | Process lifecycle, scheduling | Service, Config, Types, Utils |
-| UI | User-facing presentation | Runtime, Service, Types, Utils |
-| Providers | Cross-cutting adapters | Any layer (explicit interface) |
+Forward-only within the file:
+
+```
+Types → Templates → Commands → CLI Router
+```
+
+- Types are pure interfaces, no imports
+- Templates depend on nothing (return strings)
+- Commands import Types, call Templates, use fs/path
+- CLI Router calls Commands based on argv
+
+### Skill Structure
+
+```
+skill/Reins/
+  SKILL.md              → Routing and configuration
+  HarnessMethodology.md → Full methodology reference
+  Workflows/
+    Scaffold.md         → Scaffold workflow guide
+    Audit.md            → Audit workflow guide
+    Evolve.md           → Evolve workflow guide
+```
 
 ### Enforcement
 
 These rules are enforced mechanically:
-- [ ] Custom linter for import direction (TODO: implement)
-- [ ] Structural tests for layer violations (TODO: implement)
-- [ ] CI gate that fails on violations (TODO: implement)
+- [x] Biome linter for code formatting and style
+- [x] CI gate runs tests and self-audit on every push/PR
+- [ ] Custom structural tests for layer violations (future)
 
-## Package Structure
+## Quality Grades
 
-```
-src/
-  domains/
-    [domain-name]/
-      types/
-      config/
-      repo/
-      service/
-      runtime/
-      ui/
-      providers/
-  utils/
-  shared/
-```
+| Grade | Meaning |
+|-------|---------|
+| A | Well-tested, documented, stable |
+| B | Functional, tested, room for improvement |
+| C | Works but needs attention |
+| D | Technical debt, needs refactoring |
