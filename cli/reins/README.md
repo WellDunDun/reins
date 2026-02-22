@@ -10,7 +10,7 @@ A development methodology where **humans steer and agents execute**. All code â€
 
 ```bash
 # From npm
-npx reins audit .
+npx reins-cli audit .
 
 # Or clone and link
 git clone https://github.com/WellDunDun/reins.git

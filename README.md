@@ -27,7 +27,7 @@ $ reins audit .
 
 ```bash
 # Install globally (requires Bun or Node)
-npx reins audit .
+npx reins-cli audit .
 
 # Or clone and link
 git clone https://github.com/WellDunDun/reins.git
