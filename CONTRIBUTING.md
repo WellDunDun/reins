@@ -5,8 +5,8 @@ Thanks for your interest in improving the harness engineering toolkit.
 ## Getting started
 
 ```bash
-git clone https://github.com/WellDunDun/harness-engineering.git
-cd harness-engineering/cli/reins
+git clone https://github.com/WellDunDun/reins.git
+cd reins/cli/reins
 bun install
 ```
 

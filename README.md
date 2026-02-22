@@ -27,11 +27,11 @@ $ reins audit .
 
 ```bash
 # Install globally (requires Bun or Node)
-npx reins audit .
+npx reins-cli audit .
 
 # Or clone and link
-git clone https://github.com/WellDunDun/harness-engineering.git
-cd harness-engineering/cli/reins
+git clone https://github.com/WellDunDun/reins.git
+cd reins/cli/reins
 bun install && bun link
 ```
 
@@ -120,7 +120,7 @@ This project fills that gap. Open-sourcing it means:
 ## Project structure
 
 ```
-harness-engineering/
+reins/
   cli/reins/            # The CLI tool (Bun + TypeScript, zero deps)
     src/index.ts        # Single-file CLI
     package.json

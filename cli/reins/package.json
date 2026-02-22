@@ -1,5 +1,5 @@
 {
-  "name": "reins",
+  "name": "reins-cli",
   "version": "0.1.0",
   "description": "Scaffold, audit, and evolve projects using the Harness Engineering methodology",
   "type": "module",
@@ -7,12 +7,12 @@
   "author": "Daniel Petro",
   "repository": {
     "type": "git",
-    "url": "https://github.com/WellDunDun/harness-engineering.git",
+    "url": "git+https://github.com/WellDunDun/reins.git",
     "directory": "cli/reins"
   },
-  "homepage": "https://github.com/WellDunDun/harness-engineering#readme",
+  "homepage": "https://github.com/WellDunDun/reins#readme",
   "bugs": {
-    "url": "https://github.com/WellDunDun/harness-engineering/issues"
+    "url": "https://github.com/WellDunDun/reins/issues"
   },
   "keywords": [
     "harness-engineering",
@@ -26,7 +26,7 @@
     "openai"
   ],
   "bin": {
-    "reins": "./bin/reins.js"
+    "reins": "bin/reins.cjs"
   },
   "files": [
     "src/",
