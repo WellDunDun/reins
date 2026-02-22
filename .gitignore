@@ -1,0 +1,9 @@
+node_modules/
+*.log
+*.lock
+dist/
+build/
+.env
+.env.local
+.DS_Store
+.context/
