@@ -1,5 +1,12 @@
 # reins
 
+[![npm version](https://img.shields.io/npm/v/reins-cli.svg)](https://www.npmjs.com/package/reins-cli)
+[![CI](https://img.shields.io/github/actions/workflow/status/WellDunDun/reins/ci.yml?branch=master&label=CI)](https://github.com/WellDunDun/reins/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Zero Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://www.npmjs.com/package/reins-cli)
+[![Node](https://img.shields.io/badge/node-%3E%3D18-green.svg)](https://nodejs.org/)
+[![Bun](https://img.shields.io/badge/bun-%3E%3D1.0-f472b6.svg)](https://bun.sh/)
+
 The open-source toolkit for [Harness Engineering](https://openai.com/index/harness-engineering/) — OpenAI's methodology for building software where **humans steer and agents execute**.
 
 OpenAI published the methodology. We built the tooling.
@@ -103,6 +110,33 @@ Then use natural language:
 - "Scaffold a harness engineering project in this repo"
 - "Audit this codebase against harness engineering principles"
 - "Evolve this project to the next maturity level"
+
+## Where reins fits in the ecosystem
+
+Agent-first development has multiple layers. Reins operates at the **repository structure layer** — it's complementary to session orchestration tools, not competing with them.
+
+```
+Layer 3: SESSION EXECUTION       GSD, Flow-Next, etc.
+         How agents do work in a given coding session
+
+Layer 2: REPO READINESS          Reins
+         Is the repo structured so agents can succeed?
+
+Layer 1: THE CODEBASE
+```
+
+**Session orchestrators** (like [GSD](https://github.com/gsd-build/get-shit-done) and [Flow-Next](https://github.com/gmickel/flow-next-opencode)) manage how work flows *during a session* — decomposing tasks, maintaining fresh context, verifying results. They fight context rot (agent quality degrading as the context window fills).
+
+**Reins** ensures the repository itself is agent-legible *before any session starts*. It fights organizational rot — knowledge trapped in human heads, no architectural guardrails, no mechanical enforcement of taste.
+
+| Concern | Reins | Session orchestrators |
+|---------|-------|----------------------|
+| When you use it | Once per repo, then evolve periodically | Every coding session |
+| What it produces | Docs, audit scores, maturity roadmaps | Working code |
+| What it prevents | Organizational rot, undocumented architecture | Context rot, wasted tokens |
+| Scope | Repository-wide structure | Single session / task |
+
+**Use them together.** Reins scaffolds your repo so `AGENTS.md` tells the agent where everything is, `ARCHITECTURE.md` defines the rules, and golden principles are enforced in CI. Then a session orchestrator runs the actual coding work on top of that well-structured repo.
 
 ## Why open source
 
