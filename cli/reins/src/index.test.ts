@@ -411,6 +411,18 @@ describe("reins evolve", () => {
     expect(existsSync(join(dir, "docs", "exec-plans", "tech-debt-tracker.md"))).toBe(true);
   });
 
+  test("returns JSON error when base scaffolding fails during evolve --apply", async () => {
+    const dir = tmpDir("evolve-apply-init-failure");
+    writeFileSync(join(dir, "AGENTS.md"), "# AGENTS.md\n\nExisting hand-written agent guide.");
+    writeFileSync(join(dir, "docs"), "this blocks docs/ directory creation");
+
+    const { stderr, exitCode } = await runCli(`evolve ${dir} --apply`);
+    expect(exitCode).toBe(1);
+
+    const error = JSON.parse(stderr.trim());
+    expect(error.error).toContain("Scaffolding failed");
+  });
+
   test("suppresses pack recommendation reason when maturity gating defers agent-factory", () => {
     const dir = tmpDir("evolve-pack-recommendation-gated");
     writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "sample", scripts: { dev: "node index.js" } }));
@@ -450,6 +462,19 @@ describe("reins evolve", () => {
     const result = JSON.parse(output);
     expect(result.pack_recommendation?.recommended).toBeNull();
     expect(result.pack_recommendation?.reason).toContain("suppressed by maturity level");
+  });
+
+  test("returns JSON error when pack scaffolding fails during evolve --apply", async () => {
+    const dir = tmpDir("evolve-apply-pack-failure");
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "sample", scripts: { dev: "node index.js" } }));
+    await runCli(`init ${dir}`);
+    writeFileSync(join(dir, ".github"), "this blocks .github/workflows directory creation");
+
+    const { stderr, exitCode } = await runCli(`evolve ${dir} --apply`);
+    expect(exitCode).toBe(1);
+
+    const error = JSON.parse(stderr.trim());
+    expect(error.error).toContain("Pack scaffolding failed");
   });
 });
 

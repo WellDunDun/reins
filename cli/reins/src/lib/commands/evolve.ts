@@ -235,6 +235,24 @@ function hasMissingBaseScaffold(targetDir: string): boolean {
   return requiredArtifacts.some((artifact) => !existsSync(join(targetDir, artifact)));
 }
 
+function runInitScaffoldOrExit(targetPath: string, initPack: AutomationPack, runInit: EvolveDeps["runInit"]): void {
+  try {
+    runInit({ path: targetPath, name: "", force: false, pack: initPack, allowExistingAgents: true });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    printJsonErrorAndExit(`Scaffolding failed: ${message}`);
+  }
+}
+
+function scaffoldPackOrExit(targetDir: string): string[] {
+  try {
+    return scaffoldAutomationPack(targetDir, "agent-factory", false);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    printJsonErrorAndExit(`Pack scaffolding failed: ${message}`);
+  }
+}
+
 function applyEvolveScaffolding(
   targetDir: string,
   targetPath: string,
@@ -248,7 +266,7 @@ function applyEvolveScaffolding(
   const missingBaseScaffold = hasMissingBaseScaffold(targetDir);
   if (missingBaseScaffold) {
     const initPack: AutomationPack = shouldRecommendFactoryPack ? "agent-factory" : "none";
-    runInit({ path: targetPath, name: "", force: false, pack: initPack, allowExistingAgents: true });
+    runInitScaffoldOrExit(targetPath, initPack, runInit);
     applied.push(
       initPack === "agent-factory"
         ? "Ran 'reins init' with agent-factory pack to scaffold missing structure and automation"
@@ -259,7 +277,7 @@ function applyEvolveScaffolding(
 
   if (!shouldRecommendFactoryPack) return applied;
 
-  const packArtifacts = scaffoldAutomationPack(targetDir, "agent-factory", false);
+  const packArtifacts = scaffoldPackOrExit(targetDir);
   if (packArtifacts.length > 0) {
     applied.push(`Applied 'agent-factory' automation pack scaffolding (${packArtifacts.length} artifact(s))`);
   }
@@ -324,13 +342,17 @@ function printL4Response(auditResult: AuditResult): void {
   );
 }
 
+function printJsonErrorAndExit(message: string): never {
+  console.error(JSON.stringify({ error: message }));
+  process.exit(1);
+}
+
 function getAuditResultOrExit(targetPath: string, runAudit: EvolveDeps["runAudit"]): AuditResult {
   try {
     return runAudit(targetPath);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(JSON.stringify({ error: message }));
-    process.exit(1);
+    printJsonErrorAndExit(message);
   }
 }
 
