@@ -19,15 +19,14 @@ This document captures how `reins` currently enforces quality gates and docs-dri
 - `typecheck`
 - self-`audit`
 
-3. Auto-publish on merge to master.
+3. Publish on merge to master only when a new version is present.
 `.github/workflows/publish.yml` runs on every push to `master`:
 - Runs the full test suite as a prerequisite (`needs: test`)
 - Compares local version to published npm version
-- Bumps patch version if they match (e.g. 0.1.1 → 0.1.2)
-- Syncs root and CLI `package.json` versions
-- Commits the bump with `[skip ci]` using `GITHUB_TOKEN` (prevents recursive triggers)
-- Publishes `reins-cli` to npm
+- If the version is already published, skips release work
+- If the version is new, publishes `reins-cli` to npm
 - Creates a GitHub Release with auto-generated release notes
+- Version bumps happen in pull requests, not in the publish workflow
 
 4. Workflow enforcement detection should avoid false positives.
 CLI workflow scanning no longer uses broad substring matching (e.g. `"check"` matching `actions/checkout`).
@@ -38,12 +37,12 @@ It now uses explicit regex patterns for gates like `lint`, `test`, and `typechec
 - Policy-as-code provides deterministic governance signals for audits and doctor checks.
 - Explicit CI gates make audit scoring reproducible and mechanically verifiable.
 - False-positive-resistant detection prevents inflated audit scores.
-- Auto-publish eliminates manual release steps and ensures users always get the latest version via `npx reins-cli`.
+- Publish-on-merge is compatible with protected branches while still automating npm/GitHub releases.
 
 ## Consequences
 
 - The self-audit score improved because governance and CI depth are now explicit.
 - CLI projects can satisfy the legibility observability signal with strong diagnosability evidence instead of irrelevant service observability infrastructure.
 - Lint baseline has been reduced and now passes cleanly in local checks; CI lint remains advisory until the workflow flips the gate to blocking.
-- Every merge to master produces a versioned npm release, removing the manual publish bottleneck.
+- Merges to master only publish when the merged PR already includes a new package version.
 - Requires `NPM_TOKEN` secret in GitHub repo settings for npm authentication.
