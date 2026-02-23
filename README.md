@@ -222,6 +222,7 @@ Reins audits itself in CI. Current score:
 ```
 
 CI gates: `lint`, `test`, `typecheck`, self-`audit`. Merging to `master` runs publish: if `cli/reins/package.json` has a version not yet on npm, it publishes `reins-cli` and creates a GitHub Release.
+PRs from this repository that modify `cli/reins/**` and do not manually bump `cli/reins/package.json` are auto-patched by `.github/workflows/auto-bump-cli-version.yml` (fork PRs are skipped).
 For CLI repositories, Reins treats strong diagnosability signals (for example `doctor` surfaces, CLI diagnostics in CI, and help/error coverage) as the equivalent of service observability infrastructure.
 
 ## Project structure
