@@ -39,6 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -51,12 +52,15 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
         working-directory: cli/reins
         run: bun install
+
+      - name: Verify npm version for trusted publishing
+        run: npm --version
 
       - name: Check if publish is needed
         id: check
@@ -80,8 +84,6 @@ jobs:
         if: steps.check.outputs.should_publish == 'true'
         working-directory: cli/reins
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         if: steps.check.outputs.should_publish == 'true'
