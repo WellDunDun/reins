@@ -1,6 +1,6 @@
 # Reins Evolve Workflow
 
-Upgrade an existing project to the next harness engineering maturity level.
+Upgrade a project to the next Reins maturity level.
 
 ## Default Command
 
@@ -8,65 +8,73 @@ Run:
 - Local source: `cd cli/reins && bun src/index.ts evolve <path>`
 - Package mode: `npx reins-cli evolve <path>`
 
-## Prerequisites
+Optional flag:
+- `--apply` (limited auto-apply support)
 
-Run the Audit workflow first to determine current maturity level and gaps.
+## Prerequisite
+
+Run audit first (or let evolve run it internally) to determine current level.
+
+## Output Format
+
+```json
+{
+  "command": "evolve",
+  "project": "project-name",
+  "current_level": "L1: Assisted",
+  "current_score": 8,
+  "next_level": "L2: Steered",
+  "goal": "Shift from human-writes-code to human-steers-agent",
+  "steps": [
+    {
+      "step": 1,
+      "action": "Write golden principles",
+      "description": "Mechanical taste rules in docs/golden-principles.md, enforced in CI — not just documented.",
+      "automated": true
+    }
+  ],
+  "success_criteria": "Most new code is written by agents, not humans.",
+  "weakest_dimensions": [
+    {
+      "dimension": "architecture_enforcement",
+      "score": 1,
+      "max": 3,
+      "findings": ["..."]
+    }
+  ],
+  "applied": [],
+  "recommendations": ["..."]
+}
+```
+
+## Parsing Evolve Output
+
+```bash
+result=$(cd cli/reins && bun src/index.ts evolve <path>)
+# Parse: .current_level, .next_level
+# Parse: .steps[]
+# Parse: .weakest_dimensions[]
+```
+
+## About `--apply`
+
+Current behavior is intentionally narrow:
+- It can run `reins init` scaffolding when missing core structure is detected.
+- It does not automatically execute all non-trivial/manual evolution steps.
+
+Treat `--apply` as scaffold assist, not full autonomous evolution.
 
 ## Evolution Paths
 
-### L0 → L1: Manual → Assisted
-
-**Goal:** Get agents into the development loop.
-
-1. **Create AGENTS.md** — concise map to repository knowledge
-2. **Create docs/ structure** — design docs, product specs, references
-3. **Document architecture** — ARCHITECTURE.md with domain map
-4. **Set up agent-friendly CI** — fast feedback, clear error messages
-5. **First agent PR** — have an agent open its first PR from a prompt
-
-**Success criteria:** Agent can read AGENTS.md and open a useful PR.
-
-### L1 → L2: Assisted → Steered
-
-**Goal:** Shift from human-writes-code to human-steers-agent.
-
-1. **Write golden principles** — mechanical taste rules enforced in CI
-2. **Add structural linters** — dependency direction, layer violations
-3. **Enable worktree isolation** — app bootable per branch/worktree
-4. **Create exec-plan templates** — versioned plans in-repo
-5. **Adopt prompt-first workflow** — describe tasks, don't write code
-
-**Success criteria:** Most new code written by agents, not humans.
-
-### L2 → L3: Steered → Autonomous
-
-**Goal:** Agent handles full PR lifecycle with policy-driven guardrails.
-
-1. **Establish risk tiers and policy-as-code** — create risk-policy.json defining risk levels, watch paths, and escalation rules
-2. **Enforce golden principles mechanically** — structural lint scripts, CI gates that fail on violations
-3. **Enable self-validation** — agent drives app, takes screenshots, checks behavior
-4. **Add doc-gardening automation** — verification headers (`<!-- Verified: DATE -->`), freshness scripts in CI
-5. **Build escalation paths** — clear criteria for when to involve humans
-
-**Success criteria:** Agent can end-to-end ship a feature from prompt to merge.
-
-### L3 → L4: Autonomous → Self-Correcting
-
-**Goal:** System maintains and improves itself with active drift detection.
-
-1. **Implement active doc-gardening** — drift detection and auto-repair via doc-gardener scripts, verification header enforcement
-2. **Add quality grades per domain** — A/B/C/D scoring per domain and architectural layer
-3. **Automate enforcement ratio tracking** — target >80% of golden principles enforced in CI, track coverage continuously
-4. **Track tech debt continuously** — in-repo tracker with recurring agent-driven review and cleanup PRs
-5. **Establish docs-drift rules** — risk-policy.json watchPaths linking code changes to required doc updates
-
-**Success criteria:** Codebase improves in quality without human intervention.
+- **L0 -> L1**: establish baseline repo map/docs/architecture and first agent loop.
+- **L1 -> L2**: enforce golden principles and shift to prompt-first steering.
+- **L2 -> L3**: add policy-as-code, stronger enforcement, and autonomous delivery loops.
+- **L3 -> L4**: add active drift detection, quality grading, and continuous cleanup.
 
 ## Steps
 
-1. Run Audit workflow to get current scores
-2. Identify current maturity level
-3. Present the evolution path for current → next level
-4. Execute each step in the path (using agents, not manual code)
-5. Re-audit to verify level-up
-6. Document what changed in exec-plans/completed/
+1. Run `reins evolve <path>`.
+2. Review `.steps` and split into automated vs manual.
+3. Execute the path with agents.
+4. Re-run `reins audit <path>`.
+5. Confirm maturity/score improvement and record outcomes in `docs/exec-plans/completed/`.
