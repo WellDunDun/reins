@@ -53,5 +53,5 @@ It now uses explicit regex patterns for gates like `lint`, `test`, and `typechec
 - CLI projects can satisfy the legibility observability signal with strong diagnosability evidence instead of irrelevant service observability infrastructure.
 - Lint baseline has been reduced and now passes cleanly in local checks; CI lint remains advisory until the workflow flips the gate to blocking.
 - Merges to master only publish when the merged PR already includes a new package version.
-- Requires `NPM_TOKEN` secret in GitHub repo settings for npm authentication.
+- Requires npm Trusted Publisher configuration for this GitHub repository/workflow (OIDC), not a long-lived `NPM_TOKEN`.
 - Fork PRs may still require maintainer follow-up for version bump commits.
