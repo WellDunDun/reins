@@ -52,6 +52,7 @@ See ARCHITECTURE.md for domain map, module structure, and dependency rules.
 5. Self-audit: `cd cli/reins && bun src/index.ts audit ../..`
 6. Self-review changes for correctness and style
 7. Open PR with concise summary
+8. Resolve all PR conversations/comments before merge (GitHub review threads, CodeRabbit threads, and agent comments when applicable)
 
 ## Key Constraints
 
@@ -61,6 +62,7 @@ See ARCHITECTURE.md for domain map, module structure, and dependency rules.
 - Tests are co-located (`index.test.ts` next to `index.ts`)
 - All knowledge lives in-repo, not in external tools
 - Bun is the runtime; Node.js/tsx fallback via `bin/reins.cjs`
+- Merge discipline: treat unresolved PR conversations as a hard block when branch protection requires conversation resolution
 
 ## Golden Principles
 
