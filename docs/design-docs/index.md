@@ -7,7 +7,7 @@ Registry of all design documents with verification status.
 | core-beliefs.md | Current | 2026-02-22 | Team |
 | ci-enforcement-and-risk-policy.md | Current | 2026-02-22 | Team |
 | ecosystem-positioning.md | Current | 2026-02-22 | Team |
-| skill-evals-and-shell-boundaries.md | Current | 2026-02-22 | Team |
+| skill-evals-and-shell-boundaries.md | Current | 2026-02-23 | Team |
 
 ## Verification Schedule
 

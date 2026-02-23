@@ -62,16 +62,32 @@ Rationale:
 1. Better trigger precision and fewer false positives.
 2. Cleaner separation from adjacent general-purpose coding tasks.
 
+## Decision 4: Preserve a Strict JSON Error Contract for CLI Commands
+
+Commands that emit JSON on success should emit structured JSON on operational failure as well.
+
+Implementation requirement:
+1. Use `stderr` JSON objects for recoverable command failures (for example: scaffolding/apply failures).
+2. Exit nonzero (`exit 1`) without emitting unstructured stack traces.
+3. Keep message shape stable (`{ "error": "..." }`) so skill parsers can rely on it.
+
+Rationale:
+1. Skills parse CLI output programmatically; unstructured exceptions break routing and remediation logic.
+2. Deterministic failure payloads keep retry/escalation behavior testable.
+3. Contract consistency reduces hidden coupling between skill prompts and CLI internals.
+
 ## Consequences
 
 Positive:
 1. Skill behavior becomes testable and trackable over time.
 2. Failures become actionable via structured traces and rubric scores.
 3. Security posture is explicit where shell/network integration exists.
+4. `evolve --apply` now fails with structured JSON if init/pack scaffolding throws.
 
 Trade-offs:
 1. Evals require fixture maintenance as prompts evolve.
 2. CI integration must stay lightweight to avoid contributor friction.
+3. Error message wording changes must preserve machine-readable shape to avoid parser drift.
 
 ## Related Plan
 
