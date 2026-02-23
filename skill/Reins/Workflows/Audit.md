@@ -11,6 +11,51 @@ Run the CLI first:
 For remediation detail, pair with doctor:
 - `reins doctor <path>`
 
+## Output Format
+
+```json
+{
+  "project": "project-name",
+  "timestamp": "2026-02-23T12:39:57.977Z",
+  "scores": {
+    "repository_knowledge": { "score": 3, "max": 3, "findings": ["AGENTS.md exists (56 lines)", "..."] },
+    "architecture_enforcement": { "score": 3, "max": 3, "findings": ["..."] },
+    "agent_legibility": { "score": 3, "max": 3, "findings": ["..."] },
+    "golden_principles": { "score": 3, "max": 3, "findings": ["..."] },
+    "agent_workflow": { "score": 3, "max": 3, "findings": ["..."] },
+    "garbage_collection": { "score": 3, "max": 3, "findings": ["..."] }
+  },
+  "total_score": 18,
+  "max_score": 18,
+  "maturity_level": "L4: Self-Correcting",
+  "recommendations": ["Project is well-structured. Consider evolving to next maturity level."]
+}
+```
+
+## Parsing Audit Output
+
+### Get Total Score and Level
+
+```bash
+result=$(cd cli/reins && bun src/index.ts audit <path>)
+# Parse: .total_score (integer 0-18)
+# Parse: .maturity_level (string like "L4: Self-Correcting")
+```
+
+### Identify Weakest Dimensions
+
+```bash
+# Find dimensions scoring below max
+# Parse: .scores | to_entries[] | select(.value.score < .value.max)
+```
+
+### Check Specific Dimension
+
+```bash
+# Parse: .scores.repository_knowledge.score === 3
+# Parse: .scores.architecture_enforcement.findings (array of evidence strings)
+```
+
 ## Audit Dimensions
 
 Score each dimension 0-3:
@@ -23,9 +68,11 @@ Score each dimension 0-3:
 
 | Check | Points |
 |-------|--------|
-| AGENTS.md exists (hierarchical: per-package AGENTS.md files detected in monorepos) | +1 |
-| docs/ directory with indexed design docs (counts design decisions in design-docs/index.md) | +1 |
+| AGENTS.md exists and under 150 lines (hierarchical: per-package in monorepos) | +1 |
+| docs/ directory with indexed design docs (counts decisions in design-docs/index.md) | +1 |
 | Verification headers in docs (`<!-- Verified: DATE -->`) and execution plans versioned in-repo | +1 |
+
+**Bonus findings:** Hierarchical AGENTS.md detected, verification header count, design decision count.
 
 ### 2. Architecture Enforcement (0-3)
 
@@ -33,15 +80,19 @@ Score each dimension 0-3:
 |-------|--------|
 | ARCHITECTURE.md with dependency direction rules defined | +1 |
 | Linter enforcement depth (structural lint scripts, architectural rules in config) | +1 |
-| Enforcement evidence (risk-policy.json, CI with lint/test steps, structural lint scripts) | +1 |
+| Enforcement evidence: 2+ signals from (risk-policy.json, CI with lint/test, structural lint scripts, golden principles) | +1 |
+
+**Bonus findings:** Linter depth details, enforcement signal count.
 
 ### 3. Agent Legibility (0-3)
 
 | Check | Points |
 |-------|--------|
-| App bootable per worktree/branch (monorepo-aware: detects workspace packages, checks per-workspace bootability) | +1 |
-| Observability accessible to agents (services: Sentry/Vercel/Netlify/Docker; CLIs: diagnosability signals such as doctor/help/error surfaces and CI diagnostics) | +1 |
-| Boring tech stack, minimal opaque dependencies (monorepo-aware: per-workspace average dependency count) | +1 |
+| App bootable per worktree (monorepo-aware: detects workspace packages, checks per-workspace bootability) | +1 |
+| Observability accessible to agents (services: Sentry/Vercel/Netlify/Docker; CLIs: diagnosability signals like doctor/help commands) | +1 |
+| Boring tech stack, minimal opaque dependencies (monorepo-aware: per-workspace average, threshold <20 single or <30 avg) | +1 |
+
+**Bonus findings:** Monorepo workspace count, dependency count/average, diagnosability signals.
 
 ### 4. Golden Principles (0-3)
 
@@ -49,23 +100,27 @@ Score each dimension 0-3:
 |-------|--------|
 | Documented mechanical taste rules (counts principles, detects anti-patterns section) | +1 |
 | Rules enforced in CI with depth (counts distinct enforcement steps in CI workflows) | +1 |
-| Recurring cleanup/refactoring process | +1 |
+| Recurring cleanup/refactoring process (tech debt tracker) | +1 |
+
+**Bonus findings:** Principle count, anti-patterns detected, CI gate count.
 
 ### 5. Agent Workflow (0-3)
 
 | Check | Points |
 |-------|--------|
-| Agent config present (conductor.json, AGENTS.md, or equivalent) | +1 |
-| Workflow signals (risk-policy.json, issue templates, agent review capability) | +1 |
-| CI quality (requires 2+ distinct enforcement steps in workflows) | +1 |
+| Agent config present (CLAUDE.md, conductor.json, .cursor, AGENTS.md) | +1 |
+| Workflow signals (risk-policy.json, PR template, issue templates) | +1 |
+| CI quality: 2+ distinct enforcement steps in workflows | +1 |
+
+**Note:** `actions/checkout` does NOT count as an enforcement gate.
 
 ### 6. Garbage Collection (0-3)
 
 | Check | Points |
 |-------|--------|
-| Doc-gardener scripts and freshness automation (active GC detection) | +1 |
-| Verification headers across docs (3+ files with `<!-- Verified: DATE -->`) | +1 |
-| Docs-drift enforcement (risk-policy.json with watchPaths, quality grades per domain) | +1 |
+| Doc-gardener scripts or freshness automation (active GC detection) | +1 |
+| 3+ files with verification headers, or doc-gardener script present | +1 |
+| Docs-drift enforcement: risk-policy.json with docsDriftRules, or quality grades in architecture | +1 |
 
 ## Maturity Levels
 
@@ -77,32 +132,12 @@ Score each dimension 0-3:
 | 14-16 | **L3: Autonomous** | Agents handle full lifecycle with human oversight |
 | 17-18 | **L4: Self-Correcting** | Agents maintain, clean, and evolve the system |
 
-## Output Format
-
-```json
-{
-  "project": "project-name",
-  "timestamp": "ISO-8601",
-  "scores": {
-    "repository_knowledge": { "score": 0, "max": 3, "findings": [] },
-    "architecture_enforcement": { "score": 0, "max": 3, "findings": [] },
-    "agent_legibility": { "score": 0, "max": 3, "findings": [] },
-    "golden_principles": { "score": 0, "max": 3, "findings": [] },
-    "agent_workflow": { "score": 0, "max": 3, "findings": [] },
-    "garbage_collection": { "score": 0, "max": 3, "findings": [] }
-  },
-  "total_score": 0,
-  "max_score": 18,
-  "maturity_level": "L0",
-  "recommendations": []
-}
-```
-
 ## Steps
 
-1. Read project root for AGENTS.md, ARCHITECTURE.md, docs/
-2. Score each dimension by checking for artifacts
-3. Read CI config for enforcement checks
-4. Assess tech stack for agent-friendliness
-5. Generate JSON report
-6. Provide top 3 actionable recommendations ranked by impact
+1. Run `reins audit <path>` and capture JSON output
+2. Parse `.total_score` and `.maturity_level` for summary
+3. Identify weakest dimensions: any `.scores.*.score < 3`
+4. Read `.scores.*.findings` arrays for evidence of what was detected
+5. Present top 3 actionable recommendations from `.recommendations`
+6. If remediation needed, run `reins doctor <path>` for prescriptive fixes
+7. After making changes, re-audit to verify score improvement
