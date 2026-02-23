@@ -1,6 +1,6 @@
 {
   "name": "reins",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Harness Engineering CLI — scaffold, audit, evolve, and doctor agent-readiness",
   "scripts": {
     "dev": "cd cli/reins && bun --watch src/index.ts",
