@@ -249,9 +249,9 @@ export function riskPolicyTemplate(pack: AutomationPack = "none"): string {
   "tiers": ["low", "medium", "high"],
   "riskTierRules": {
     "high": [
-      "src/security/",
-      "src/auth/",
-      ".github/workflows/",
+      "src/security",
+      "src/auth",
+      ".github/workflows",
       "risk-policy.json",
       "AGENTS.md",
       "ARCHITECTURE.md"
@@ -270,7 +270,7 @@ export function riskPolicyTemplate(pack: AutomationPack = "none"): string {
     }
   },
   "docsDriftRules": {
-    "watchPaths": ["src/", "scripts/", ".github/workflows/"],
+    "watchPaths": ["src", "scripts", ".github/workflows"],
     "mustUpdate": ["AGENTS.md", "ARCHITECTURE.md", "docs/golden-principles.md"]
   }
 }
@@ -280,14 +280,14 @@ export function riskPolicyTemplate(pack: AutomationPack = "none"): string {
   return `{
   "version": 1,
   "tiers": ["low", "medium", "high"],
-  "watchPaths": ["src/", "docs/", "skill/"],
+  "watchPaths": ["src", "docs", "skill"],
   "docsDriftRules": [
     {
-      "watch": "src/",
+      "watch": "src",
       "docs": ["ARCHITECTURE.md", "docs/design-docs/index.md", "docs/golden-principles.md"]
     },
     {
-      "watch": "skill/",
+      "watch": "skill",
       "docs": ["AGENTS.md", "skill/Reins/HarnessMethodology.md"]
     }
   ]

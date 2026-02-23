@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { $ } from "bun";
+import { runEvolve } from "./lib/commands/evolve";
+import type { AuditResult } from "./lib/types";
 
 const CLI = join(import.meta.dir, "index.ts");
 const TMP = join(import.meta.dir, "..", ".test-fixtures");
@@ -131,6 +133,12 @@ describe("reins init", () => {
     const riskPolicy = JSON.parse(readFileSync(join(dir, "risk-policy.json"), "utf-8"));
     expect(riskPolicy).toHaveProperty("riskTierRules");
     expect(riskPolicy).toHaveProperty("mergePolicy");
+    expect(riskPolicy.riskTierRules.high).toEqual(
+      expect.arrayContaining(["src/security", "src/auth", ".github/workflows"]),
+    );
+    expect(riskPolicy.docsDriftRules.watchPaths).toEqual(
+      expect.arrayContaining(["src", "scripts", ".github/workflows"]),
+    );
   });
 
   test("auto pack stays base scaffold when stack signals are insufficient", async () => {
@@ -385,6 +393,63 @@ describe("reins evolve", () => {
     expect(result.pack_recommendation?.recommended).toBe("agent-factory");
     expect(existsSync(join(dir, "scripts", "lint-structure.mjs"))).toBe(true);
     expect(existsSync(join(dir, ".github", "workflows", "risk-policy-gate.yml"))).toBe(true);
+  });
+
+  test("applies base scaffold during evolve --apply even when AGENTS.md already exists", async () => {
+    const dir = tmpDir("evolve-apply-existing-agents");
+    writeFileSync(join(dir, "AGENTS.md"), "# AGENTS.md\n\nExisting hand-written agent guide.");
+
+    const { stdout, exitCode } = await runCli(`evolve ${dir} --apply`);
+    expect(exitCode).toBe(0);
+
+    const evolveJsonStart = stdout.lastIndexOf('{\n  "command": "evolve"');
+    expect(evolveJsonStart).toBeGreaterThanOrEqual(0);
+    const result = JSON.parse(stdout.slice(evolveJsonStart));
+    expect(result.applied).toEqual(expect.arrayContaining([expect.stringContaining("Ran 'reins init'")]));
+    expect(existsSync(join(dir, "ARCHITECTURE.md"))).toBe(true);
+    expect(existsSync(join(dir, "docs", "design-docs", "index.md"))).toBe(true);
+    expect(existsSync(join(dir, "docs", "exec-plans", "tech-debt-tracker.md"))).toBe(true);
+  });
+
+  test("suppresses pack recommendation reason when maturity gating defers agent-factory", () => {
+    const dir = tmpDir("evolve-pack-recommendation-gated");
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "sample", scripts: { dev: "node index.js" } }));
+
+    const mockAuditResult: AuditResult = {
+      project: "sample",
+      timestamp: new Date().toISOString(),
+      scores: {
+        repository_knowledge: { score: 3, max: 3, findings: [] },
+        architecture_enforcement: { score: 3, max: 3, findings: [] },
+        agent_legibility: { score: 3, max: 3, findings: [] },
+        golden_principles: { score: 3, max: 3, findings: [] },
+        agent_workflow: { score: 1, max: 3, findings: [] },
+        garbage_collection: { score: 1, max: 3, findings: [] },
+      },
+      total_score: 14,
+      max_score: 18,
+      maturity_level: "L3: Autonomous",
+      recommendations: [],
+    };
+
+    let output = "";
+    const originalLog = console.log;
+    console.log = (value?: unknown) => {
+      output = String(value ?? "");
+    };
+
+    try {
+      runEvolve(dir, false, {
+        runAudit: () => mockAuditResult,
+        runInit: () => {},
+      });
+    } finally {
+      console.log = originalLog;
+    }
+
+    const result = JSON.parse(output);
+    expect(result.pack_recommendation?.recommended).toBeNull();
+    expect(result.pack_recommendation?.reason).toContain("suppressed by maturity level");
   });
 });
 

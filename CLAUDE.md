@@ -15,8 +15,10 @@ bun src/index.ts audit ../..    # Self-audit
 
 ## Key Files
 
-- `cli/reins/src/index.ts` — All CLI logic (single file)
-- `cli/reins/src/index.test.ts` — Test suite (36 tests)
+- `cli/reins/src/index.ts` — CLI router and command orchestration
+- `cli/reins/src/lib/commands/` — Command handlers (init/audit/doctor/evolve)
+- `cli/reins/src/lib/audit/` — Audit context and scoring internals
+- `cli/reins/src/index.test.ts` — Test suite
 - `AGENTS.md` — Repository map (start here)
 - `ARCHITECTURE.md` — Domain map and structure
 

@@ -26,6 +26,7 @@ export interface InitOptions {
   name: string;
   force: boolean;
   pack: string;
+  allowExistingAgents?: boolean;
 }
 
 export type DoctorStatus = "pass" | "fail" | "warn";

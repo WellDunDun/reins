@@ -216,6 +216,25 @@ function buildEvolutionSteps(path: EvolutionPath, shouldRecommendFactoryPack: bo
   return steps;
 }
 
+function hasMissingBaseScaffold(targetDir: string): boolean {
+  const requiredArtifacts = [
+    "AGENTS.md",
+    "ARCHITECTURE.md",
+    "risk-policy.json",
+    "docs/golden-principles.md",
+    "docs/design-docs/index.md",
+    "docs/design-docs/core-beliefs.md",
+    "docs/product-specs/index.md",
+    "docs/exec-plans/tech-debt-tracker.md",
+    "docs/exec-plans/active",
+    "docs/exec-plans/completed",
+    "docs/generated",
+    "docs/references",
+  ];
+
+  return requiredArtifacts.some((artifact) => !existsSync(join(targetDir, artifact)));
+}
+
 function applyEvolveScaffolding(
   targetDir: string,
   targetPath: string,
@@ -230,9 +249,10 @@ function applyEvolveScaffolding(
   const needsInitScaffold = path.steps.some(
     (step) => step.automated && (step.action.includes("AGENTS.md") || step.action.includes("docs/")),
   );
-  if (needsInitScaffold && !existsSync(join(targetDir, "AGENTS.md"))) {
+  const missingBaseScaffold = hasMissingBaseScaffold(targetDir);
+  if (needsInitScaffold && missingBaseScaffold) {
     const initPack: AutomationPack = shouldRecommendFactoryPack ? "agent-factory" : "none";
-    runInit({ path: targetPath, name: "", force: false, pack: initPack });
+    runInit({ path: targetPath, name: "", force: false, pack: initPack, allowExistingAgents: true });
     applied.push(
       initPack === "agent-factory"
         ? "Ran 'reins init' with agent-factory pack to scaffold missing structure and automation"
@@ -272,6 +292,13 @@ function buildPackRecommendationOutput(packState: EvolvePackState): { recommende
     return {
       recommended: null,
       reason: "Agent-factory automation pack already present.",
+    };
+  }
+
+  if (packState.packRecommendation.selected === "agent-factory") {
+    return {
+      recommended: null,
+      reason: "Agent-factory recommendation suppressed by maturity level.",
     };
   }
 

@@ -39,14 +39,14 @@ function parseRequestedPack(rawPack: string): AutomationPack {
   process.exit(1);
 }
 
-function ensureInitTarget(targetDir: string, force: boolean): void {
+function ensureInitTarget(targetDir: string, force: boolean, allowExistingAgents = false): void {
   if (!existsSync(targetDir)) {
     console.error(JSON.stringify({ error: `Directory does not exist: ${targetDir}` }));
     process.exit(1);
   }
 
   const agentsMdPath = join(targetDir, "AGENTS.md");
-  if (!existsSync(agentsMdPath) || force) return;
+  if (!existsSync(agentsMdPath) || force || allowExistingAgents) return;
 
   console.error(
     JSON.stringify({
@@ -143,7 +143,7 @@ function buildInitContext(options: InitOptions): InitContext {
 
 export function runInit(options: InitOptions): void {
   const { targetDir, projectName, requestedPack } = buildInitContext(options);
-  ensureInitTarget(targetDir, options.force);
+  ensureInitTarget(targetDir, options.force, options.allowExistingAgents ?? false);
 
   const packResolution = resolveAutomationPack(targetDir, requestedPack);
   const selectedPack = packResolution.selected;
