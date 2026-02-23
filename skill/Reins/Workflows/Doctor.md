@@ -6,7 +6,7 @@ Diagnose readiness gaps with pass/fail/warn checks and prescriptive fixes.
 
 Run the CLI first:
 - Local source: `cd cli/reins && bun src/index.ts doctor <path>`
-- Package mode: `npx reins-cli doctor <path>`
+- Package mode: `npx reins-cli@latest doctor <path>`
 
 For scoring context, pair with audit:
 - `reins audit <path>`

@@ -7,6 +7,14 @@ description: Reins CLI skill for scaffold/audit/doctor/evolve workflows. Use whe
 
 Use the Reins CLI to operationalize harness engineering in any repository.
 
+## Execution Model (Critical)
+
+1. The CLI is the execution engine and scoring source of truth.
+2. This skill is the control plane for agent behavior (routing, command order, JSON parsing discipline).
+3. Humans steer goals and tradeoffs; agents execute the loop.
+
+Do not re-implement CLI logic in skill instructions. Always run commands and parse JSON outputs.
+
 ## Use When
 
 Use this skill when the user asks to:
@@ -29,10 +37,14 @@ Do not use this skill for:
 
 Use this order when running commands:
 
-1. If working inside the Reins repository itself:
+1. In user repositories, check if installed skills are stale:
+`npx skills check`
+If updates are available, refresh before running workflow commands:
+`npx skills update`
+2. If working inside the Reins repository itself:
 `cd cli/reins && bun src/index.ts <command> ../..`
-2. Otherwise (or if local source is unavailable):
-`npx reins-cli <command> <target-path>`
+3. Otherwise (or if local source is unavailable):
+`npx reins-cli@latest <command> <target-path>`
 
 All Reins commands output deterministic JSON. **Always parse JSON output** — never text-match against findings strings.
 
@@ -42,7 +54,7 @@ All Reins commands output deterministic JSON. **Always parse JSON output** — n
 
 ```bash
 # Scaffold harness engineering structure
-reins init <path> [--name <name>] [--force]
+reins init <path> [--name <name>] [--force] [--pack <auto|agent-factory>]
 
 # Score maturity across 6 dimensions (0-18)
 reins audit <path>

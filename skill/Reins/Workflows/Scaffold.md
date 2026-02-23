@@ -6,7 +6,7 @@ Set up a repository with Reins harness-engineering structure.
 
 Use Reins before manual scaffolding:
 - Local source: `cd cli/reins && bun src/index.ts init <path>`
-- Package mode: `npx reins-cli init <path>`
+- Package mode: `npx reins-cli@latest init <path>`
 
 ## Output Format
 
@@ -15,6 +15,9 @@ Use Reins before manual scaffolding:
   "command": "init",
   "project": "project-name",
   "target": "/abs/path/to/project",
+  "requested_automation_pack": null,
+  "automation_pack": null,
+  "automation_pack_reason": "No optional automation pack selected.",
   "created": [
     "docs/design-docs/",
     "docs/exec-plans/active/",
@@ -44,6 +47,7 @@ Use Reins before manual scaffolding:
 Notes:
 - `created` includes both directories (with trailing `/`) and files.
 - Existing scaffolding is refused unless `--force` is used.
+- `automation_pack` is `null` by default, `"agent-factory"` when explicitly requested, or selected adaptively when `--pack auto` is used.
 
 ## Flags
 
@@ -51,6 +55,7 @@ Notes:
 |------|---------|---------|
 | `--name <name>` | Set project name (default: directory name) | `reins init . --name MyProject` |
 | `--force` | Overwrite existing files | `reins init . --force` |
+| `--pack <name>` | Optional automation templates (`auto`, `agent-factory`) | `reins init . --pack auto` |
 
 ## Steps
 

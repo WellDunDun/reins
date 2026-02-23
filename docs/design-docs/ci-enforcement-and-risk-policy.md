@@ -1,6 +1,6 @@
 # CI Enforcement and Risk Policy
 
-<!-- Verified: 2026-02-22 -->
+<!-- Verified: 2026-02-23 -->
 
 This document captures how `reins` currently enforces quality gates and docs-drift policy on itself.
 
@@ -39,6 +39,10 @@ It now uses explicit regex patterns for gates like `lint`, `test`, and `typechec
 - Commits and pushes the bump to the PR branch for same-repo PRs
 - Skips push behavior for fork PRs
 
+6. Conversation resolution is a merge gate.
+When GitHub branch protection enables "Require conversation resolution before merging", unresolved review threads block merge even if CI is green.
+Operationally, use Conductor's `Checks` view and `Todos` to track unresolved review feedback before attempting merge.
+
 ## Rationale
 
 - Policy-as-code provides deterministic governance signals for audits and doctor checks.
@@ -55,3 +59,4 @@ It now uses explicit regex patterns for gates like `lint`, `test`, and `typechec
 - Merges to master only publish when the merged PR already includes a new package version.
 - Requires npm Trusted Publisher configuration for this GitHub repository/workflow (OIDC), not a long-lived `NPM_TOKEN`.
 - Fork PRs may still require maintainer follow-up for version bump commits.
+- "Green CI" is not sufficient for merge readiness when conversation resolution is enforced; unresolved comment threads must be closed.

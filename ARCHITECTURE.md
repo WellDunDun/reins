@@ -10,29 +10,40 @@
 
 ## Module Structure
 
-reins is a single-file CLI tool. The architecture is function-based, not layered.
+reins uses a single CLI entrypoint with modular internals.
 
 ```
-cli/reins/src/index.ts
-  |
-  +-- Types (interfaces: AuditScore, AuditResult, InitOptions, EvolutionStep, EvolutionPath)
-  +-- Templates (agentsMdTemplate, architectureMdTemplate, goldenPrinciplesTemplate, ...)
-  +-- Commands (init, runAudit, audit, doctor, evolve)
-  +-- CLI Router (main, printHelp, flag parsing)
+cli/reins/src/
+  index.ts                 # CLI router + command orchestration
+  index.test.ts            # End-to-end command tests
+  lib/
+    commands/
+      init.ts              # init command handler
+      audit.ts             # audit scoring + command output
+      doctor.ts            # doctor checks + command output
+      evolve.ts            # evolve command handler
+    audit/
+      context.ts           # audit runtime context and repo signal collection
+      scoring.ts           # scoring functions and maturity resolution
+    types.ts               # Shared CLI domain types
+    templates.ts           # Scaffold/templates for docs/scripts/workflows
+    filesystem.ts          # Safe file walking and discovery helpers
+    detection.ts           # Workflow/CLI/monorepo signal detection
+    automation-pack.ts     # Pack normalization/recommendation/scaffolding
+    scoring-utils.ts       # Shared scoring helpers
 ```
 
 ### Dependency Direction
 
-Forward-only within the file:
+Forward-only between modules:
 
 ```
-Types → Templates → Commands → CLI Router
+lib/helpers + lib/commands → index.ts router → CLI output
 ```
 
-- Types are pure interfaces, no imports
-- Templates depend on nothing (return strings)
-- Commands import Types, call Templates, use fs/path
-- CLI Router calls Commands based on argv
+- `lib/*` modules are reusable helpers with narrow responsibilities
+- `lib/commands/*` own command semantics and JSON response contracts
+- `index.ts` focuses on argument parsing and routing only
 
 ### Skill Structure
 

@@ -5,6 +5,7 @@ import { $ } from "bun";
 
 const CLI = join(import.meta.dir, "index.ts");
 const TMP = join(import.meta.dir, "..", ".test-fixtures");
+const REPO_ROOT = join(import.meta.dir, "..", "..", "..");
 
 function tmpDir(name: string): string {
   const dir = join(TMP, name);
@@ -106,6 +107,69 @@ describe("reins init", () => {
     const { stderr, exitCode } = await runCli(`init ${TMP}/does-not-exist`);
     expect(exitCode).toBe(1);
     expect(stderr).toContain("does not exist");
+  });
+
+  test("scaffolds agent-factory automation pack when requested", async () => {
+    const dir = tmpDir("init-agent-factory-pack");
+    const { stdout, exitCode } = await runCli(`init ${dir} --pack agent-factory`);
+    expect(exitCode).toBe(0);
+
+    const result = JSON.parse(stdout);
+    expect(result.automation_pack).toBe("agent-factory");
+    expect(result.created).toContain("scripts/lint-structure.mjs");
+    expect(result.created).toContain("scripts/doc-gardener.mjs");
+    expect(result.created).toContain("scripts/check-changed-doc-freshness.mjs");
+    expect(result.created).toContain("scripts/pr-review.mjs");
+    expect(result.created).toContain(".github/workflows/risk-policy-gate.yml");
+    expect(result.created).toContain(".github/workflows/pr-review-bot.yml");
+    expect(result.created).toContain(".github/workflows/structural-lint.yml");
+
+    expect(existsSync(join(dir, "scripts", "lint-structure.mjs"))).toBe(true);
+    expect(existsSync(join(dir, "scripts", "doc-gardener.mjs"))).toBe(true);
+    expect(existsSync(join(dir, ".github", "workflows", "risk-policy-gate.yml"))).toBe(true);
+
+    const riskPolicy = JSON.parse(readFileSync(join(dir, "risk-policy.json"), "utf-8"));
+    expect(riskPolicy).toHaveProperty("riskTierRules");
+    expect(riskPolicy).toHaveProperty("mergePolicy");
+    expect(riskPolicy.riskTierRules.high).toEqual(
+      expect.arrayContaining(["src/security", "src/auth", ".github/workflows"]),
+    );
+    expect(riskPolicy.docsDriftRules.watchPaths).toEqual(
+      expect.arrayContaining(["src", "scripts", ".github/workflows"]),
+    );
+  });
+
+  test("auto pack stays base scaffold when stack signals are insufficient", async () => {
+    const dir = tmpDir("init-auto-pack-none");
+    const { stdout, exitCode } = await runCli(`init ${dir} --pack auto`);
+    expect(exitCode).toBe(0);
+
+    const result = JSON.parse(stdout);
+    expect(result.requested_automation_pack).toBe("auto");
+    expect(result.automation_pack).toBeNull();
+    expect(result.automation_pack_reason).toContain("Insufficient stack signals");
+    expect(existsSync(join(dir, "scripts", "lint-structure.mjs"))).toBe(false);
+  });
+
+  test("auto pack selects agent-factory for Node/JS projects", async () => {
+    const dir = tmpDir("init-auto-pack-node");
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "sample", scripts: { dev: "node index.js" } }));
+
+    const { stdout, exitCode } = await runCli(`init ${dir} --pack auto`);
+    expect(exitCode).toBe(0);
+
+    const result = JSON.parse(stdout);
+    expect(result.requested_automation_pack).toBe("auto");
+    expect(result.automation_pack).toBe("agent-factory");
+    expect(result.automation_pack_reason).toContain("Detected package.json");
+    expect(existsSync(join(dir, "scripts", "lint-structure.mjs"))).toBe(true);
+  });
+
+  test("rejects unknown automation packs", async () => {
+    const dir = tmpDir("init-unknown-pack");
+    const { stderr, exitCode } = await runCli(`init ${dir} --pack unknown-pack`);
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Unknown automation pack");
   });
 });
 
@@ -297,6 +361,77 @@ describe("reins evolve", () => {
     expect(result.weakest_dimensions[0]).toHaveProperty("dimension");
     expect(result.weakest_dimensions[0]).toHaveProperty("score");
     expect(result.weakest_dimensions[0]).toHaveProperty("findings");
+  });
+
+  test("recommends agent-factory pack when project is compatible and pack is missing", async () => {
+    const dir = tmpDir("evolve-pack-recommendation");
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "sample", scripts: { dev: "node index.js" } }));
+    await runCli(`init ${dir}`);
+
+    const { stdout } = await runCli(`evolve ${dir}`);
+    const result = JSON.parse(stdout);
+
+    expect(result.pack_recommendation?.recommended).toBe("agent-factory");
+    expect(result.steps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ action: expect.stringContaining("agent-factory automation pack") }),
+      ]),
+    );
+  });
+
+  test("applies recommended agent-factory pack during evolve --apply", async () => {
+    const dir = tmpDir("evolve-pack-apply");
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "sample", scripts: { dev: "node index.js" } }));
+    await runCli(`init ${dir}`);
+
+    const { stdout, exitCode } = await runCli(`evolve ${dir} --apply`);
+    expect(exitCode).toBe(0);
+
+    const result = JSON.parse(stdout);
+    expect(result.pack_recommendation?.recommended).toBe("agent-factory");
+    expect(existsSync(join(dir, "scripts", "lint-structure.mjs"))).toBe(true);
+    expect(existsSync(join(dir, ".github", "workflows", "risk-policy-gate.yml"))).toBe(true);
+  });
+
+  test("applies base scaffold during evolve --apply even when AGENTS.md already exists", async () => {
+    const dir = tmpDir("evolve-apply-existing-agents");
+    writeFileSync(join(dir, "AGENTS.md"), "# AGENTS.md\n\nExisting hand-written agent guide.");
+
+    const { stdout, exitCode } = await runCli(`evolve ${dir} --apply`);
+    expect(exitCode).toBe(0);
+
+    const evolveJsonStart = stdout.lastIndexOf('{\n  "command": "evolve"');
+    expect(evolveJsonStart).toBeGreaterThanOrEqual(0);
+    const result = JSON.parse(stdout.slice(evolveJsonStart));
+    expect(result.applied).toEqual(expect.arrayContaining([expect.stringContaining("Ran 'reins init'")]));
+    expect(existsSync(join(dir, "ARCHITECTURE.md"))).toBe(true);
+    expect(existsSync(join(dir, "docs", "design-docs", "index.md"))).toBe(true);
+    expect(existsSync(join(dir, "docs", "exec-plans", "tech-debt-tracker.md"))).toBe(true);
+  });
+
+  test("returns JSON error when base scaffolding fails during evolve --apply", async () => {
+    const dir = tmpDir("evolve-apply-init-failure");
+    writeFileSync(join(dir, "AGENTS.md"), "# AGENTS.md\n\nExisting hand-written agent guide.");
+    writeFileSync(join(dir, "docs"), "this blocks docs/ directory creation");
+
+    const { stderr, exitCode } = await runCli(`evolve ${dir} --apply`);
+    expect(exitCode).toBe(1);
+
+    const error = JSON.parse(stderr.trim());
+    expect(error.error).toContain("Scaffolding failed");
+  });
+
+  test("returns JSON error when pack scaffolding fails during evolve --apply", async () => {
+    const dir = tmpDir("evolve-apply-pack-failure");
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "sample", scripts: { dev: "node index.js" } }));
+    await runCli(`init ${dir}`);
+    writeFileSync(join(dir, ".github"), "this blocks .github/workflows directory creation");
+
+    const { stderr, exitCode } = await runCli(`evolve ${dir} --apply`);
+    expect(exitCode).toBe(1);
+
+    const error = JSON.parse(stderr.trim());
+    expect(error.error).toContain("Pack scaffolding failed");
   });
 });
 
@@ -881,5 +1016,43 @@ describe("reins help", () => {
     const { stderr, exitCode } = await runCli("foobar");
     expect(exitCode).toBe(1);
     expect(stderr).toContain("Unknown command");
+  });
+});
+
+// ─── Docs Contract ──────────────────────────────────────────────────────────
+
+describe("docs contract — skill/cli/human model clarity", () => {
+  test("README keeps canonical model and steering loop", () => {
+    const readme = readFileSync(join(REPO_ROOT, "README.md"), "utf-8");
+    expect(readme).toContain("## The model (for humans and agents)");
+    expect(readme).toContain("| **Skill** |");
+    expect(readme).toContain("| **CLI** |");
+    expect(readme).toContain("| **Human** |");
+    expect(readme).toContain("## The steering loop");
+    expect(readme).toContain("Install/refresh skill -> Audit -> Doctor/Evolve -> Apply changes -> Re-audit");
+  });
+
+  test("AGENTS.md keeps product split explicit", () => {
+    const agents = readFileSync(join(REPO_ROOT, "AGENTS.md"), "utf-8");
+    expect(agents).toContain("## Product Model (Must Keep Clear)");
+    expect(agents).toContain("`cli/reins` is the product engine");
+    expect(agents).toContain("`skill/Reins` is the control-plane wrapper");
+    expect(agents).toContain("Humans steer outcomes");
+  });
+
+  test("skill instructions keep execution model contract", () => {
+    const skill = readFileSync(join(REPO_ROOT, "skill", "Reins", "SKILL.md"), "utf-8");
+    expect(skill).toContain("## Execution Model (Critical)");
+    expect(skill).toContain("The CLI is the execution engine and scoring source of truth.");
+    expect(skill).toContain("This skill is the control plane for agent behavior");
+    expect(skill).toContain("Always run commands and parse JSON outputs.");
+  });
+
+  test("CLI README explains skill relationship for end-user agents", () => {
+    const cliReadme = readFileSync(join(REPO_ROOT, "cli", "reins", "README.md"), "utf-8");
+    expect(cliReadme).toContain("## Relationship to the Reins skill");
+    expect(cliReadme).toContain("`reins-cli` is the execution engine");
+    expect(cliReadme).toContain("The Reins skill is the control plane");
+    expect(cliReadme).toContain("npx skills add WellDunDun/reins");
   });
 });

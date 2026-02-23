@@ -4,7 +4,7 @@ Track known technical debt with priority and ownership.
 
 | ID | Description | Domain | Priority | Status | Created | Updated |
 |----|-------------|--------|----------|--------|---------|---------|
-| TD-001 | Single-file CLI (1767 lines) could be modularized | CLI | Medium | Open | 2026-02-22 | 2026-02-22 |
+| TD-001 | CLI modularization completed: router in `src/index.ts`, command handlers in `src/lib/commands/`, audit internals in `src/lib/audit/` | CLI | Medium | Closed | 2026-02-22 | 2026-02-23 |
 | TD-002 | Audit heuristics are file-existence only, no AST analysis | CLI | Medium | Open | 2026-02-22 | 2026-02-22 |
 | TD-003 | No language support beyond JS/TS ecosystems | CLI | High | Open | 2026-02-22 | 2026-02-22 |
 | TD-004 | Observability check not meaningful for CLI tools (resolved via CLI diagnosability scoring) | CLI | Low | Closed | 2026-02-22 | 2026-02-22 |
