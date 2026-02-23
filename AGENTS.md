@@ -4,6 +4,15 @@
 
 reins — Open-source CLI that operationalizes harness engineering. Scaffold, audit, evolve, and doctor any project's agent-readiness. Zero dependencies, Bun-powered.
 
+## Product Model (Must Keep Clear)
+
+- `cli/reins` is the product engine. It is the only source of truth for readiness scoring and JSON outputs.
+- `skill/Reins` is the control-plane wrapper for coding agents. It decides when/how to call CLI commands and how to parse results.
+- Humans steer outcomes. Agents execute the loop using Reins outputs.
+- Reins exists to transfer proven harness patterns into any repo so agents can become more autonomous and consistent over time.
+
+When updating docs or workflows, preserve this separation explicitly. Do not duplicate scoring logic in the skill layer.
+
 ## Architecture
 
 See ARCHITECTURE.md for domain map, module structure, and dependency rules.
@@ -14,6 +23,9 @@ See ARCHITECTURE.md for domain map, module structure, and dependency rules.
 |-------|----------|--------|
 | Architecture | ARCHITECTURE.md | Current |
 | CLI Source | cli/reins/src/index.ts | Current |
+| CLI Modules | cli/reins/src/lib/ | Current |
+| CLI Commands | cli/reins/src/lib/commands/ | Current |
+| Audit Engine | cli/reins/src/lib/audit/ | Current |
 | CLI Tests | cli/reins/src/index.test.ts | Current |
 | Claude Skill | skill/Reins/SKILL.md | Current |
 | Harness Methodology | skill/Reins/HarnessMethodology.md | Current |
@@ -35,7 +47,7 @@ See ARCHITECTURE.md for domain map, module structure, and dependency rules.
 
 1. Receive task via prompt
 2. Read this file, then follow pointers to relevant docs
-3. All CLI logic lives in `cli/reins/src/index.ts` (single-file design)
+3. Keep CLI command routing in `cli/reins/src/index.ts`; put reusable internals in `cli/reins/src/lib/` (especially `lib/commands/` and `lib/audit/`)
 4. Run tests: `cd cli/reins && bun test`
 5. Self-audit: `cd cli/reins && bun src/index.ts audit ../..`
 6. Self-review changes for correctness and style
@@ -44,7 +56,7 @@ See ARCHITECTURE.md for domain map, module structure, and dependency rules.
 ## Key Constraints
 
 - Zero external runtime dependencies — stdlib only (fs, path)
-- Single-file CLI at `cli/reins/src/index.ts`
+- Single entrypoint CLI at `cli/reins/src/index.ts` with shared internals in `cli/reins/src/lib/`
 - All commands output deterministic JSON
 - Tests are co-located (`index.test.ts` next to `index.ts`)
 - All knowledge lives in-repo, not in external tools

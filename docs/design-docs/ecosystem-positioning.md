@@ -36,7 +36,7 @@ npx skills add WellDunDun/reins
 
 Once installed, the agent can discover the Reins workflows and run the CLI directly:
 - local source mode (inside this repo): `cd cli/reins && bun src/index.ts <command> ../..`
-- package mode (any repo): `npx reins-cli <command> <target-path>`
+- package mode (any repo): `npx reins-cli@latest <command> <target-path>`
 
 **Core operations:**
 - `reins init` — scaffold the full harness engineering structure

@@ -2,6 +2,18 @@
 
 Scaffold, audit, and evolve projects using the [Harness Engineering](https://openai.com/index/harness-engineering/) methodology.
 
+## Relationship to the Reins skill
+
+- `reins-cli` is the execution engine (deterministic JSON commands).
+- The Reins skill is the control plane that teaches coding agents when/how to call this CLI.
+- Human operators steer intent; agents execute with Reins command outputs.
+
+For end-user agent workflows, install the skill first:
+
+```bash
+npx skills add WellDunDun/reins
+```
+
 ## What is Harness Engineering?
 
 A development methodology where **humans steer and agents execute**. All code — application logic, tests, CI, docs, tooling — is written by AI agents. Humans design environments, specify intent, and build feedback loops.
@@ -11,7 +23,7 @@ A development methodology where **humans steer and agents execute**. All code �
 ```bash
 # From npm
 # "." means "current directory"
-npx reins-cli audit .
+npx reins-cli@latest audit .
 
 # Or clone and link
 git clone https://github.com/WellDunDun/reins.git
@@ -32,6 +44,8 @@ Scaffold the full harness engineering structure in a directory:
 reins init .
 reins init ./my-project --name "My Project"
 reins init . --force  # Overwrite existing files
+reins init . --pack auto  # Adaptive pack selection from project signals
+reins init . --pack agent-factory  # Optional advanced automation pack
 ```
 
 Creates:
@@ -44,6 +58,12 @@ Creates:
 - `docs/exec-plans/` — Active plans, completed plans, tech debt tracker
 - `docs/references/` — External LLM-friendly reference docs
 - `docs/generated/` — Auto-generated documentation
+
+Pack modes:
+- `--pack auto` selects a compatible pack when stack signals are clear, otherwise keeps base scaffold.
+- `--pack agent-factory` explicitly scaffolds advanced automation:
+- `scripts/lint-structure.mjs`, `scripts/doc-gardener.mjs`, `scripts/check-changed-doc-freshness.mjs`, `scripts/pr-review.mjs`
+- `.github/workflows/risk-policy-gate.yml`, `.github/workflows/pr-review-bot.yml`, `.github/workflows/structural-lint.yml`
 
 ### `reins audit <path>`
 

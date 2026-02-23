@@ -39,7 +39,7 @@ Reins remains local-first by default. Hosted shell guidance is documented as opt
 
 Local-first default:
 1. Run local source inside this repo when available.
-2. Otherwise use `npx reins-cli ...`.
+2. Otherwise use `npx reins-cli@latest ...`.
 3. Prefer deterministic JSON parsing for all command outputs.
 
 Hosted-shell optional guidance:

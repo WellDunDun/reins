@@ -12,6 +12,22 @@ The open-source toolkit for [Harness Engineering](https://openai.com/index/harne
 
 OpenAI published the methodology. We built the tooling.
 
+## Why Reins exists
+
+Reins came from real project pressure: as the harness improved, coding agents became more autonomous, consistent, and reliable. The problem was portability. Those gains were trapped in one repo.
+
+Reins packages the same approach so you can apply it to any project: scaffold the harness, score readiness, diagnose gaps, and iteratively evolve toward stronger agent autonomy.
+
+## The model (for humans and agents)
+
+| Layer | Role | Source of truth |
+|------|------|-----------------|
+| **Skill** | Control plane. Teaches the agent *when* to run Reins and *how* to interpret output. | `skill/Reins/SKILL.md` |
+| **CLI** | Execution plane. Produces deterministic JSON for `init`, `audit`, `doctor`, `evolve`. | `cli/reins/src/lib/commands/` (+ routed via `cli/reins/src/index.ts`) |
+| **Human** | Steering plane. Sets goals, accepts tradeoffs, and decides product/taste direction. | Prompts + repo decisions |
+
+If this split is unclear, agents drift: they either skip Reins or use it incorrectly. Reins is designed so agents can repeatedly improve repo quality with explicit, machine-readable feedback loops.
+
 ## Quick start
 
 **1. Install the skill** so your agent knows how to use Reins:
@@ -36,7 +52,8 @@ Agent: runs audit, identifies current level, executes the evolution path
 **2. Or run the CLI directly** for a quick score without the skill:
 
 ```bash
-npx reins-cli audit .
+# "." means "current directory"
+npx reins-cli@latest audit .
 ```
 
 ```json
@@ -51,6 +68,26 @@ npx reins-cli audit .
   ]
 }
 ```
+
+## Keep Reins fresh
+
+```bash
+# Check whether your installed skills are outdated
+npx skills check
+
+# Update installed skills (including Reins) when updates are available
+npx skills update
+```
+
+If you run Reins directly (without the skill), prefer `npx reins-cli@latest ...` so agents always use the latest published CLI.
+
+## The steering loop
+
+```text
+Install/refresh skill -> Audit -> Doctor/Evolve -> Apply changes -> Re-audit
+```
+
+That loop is the product: repeatedly steering agents toward a better repository state.
 
 ## Why teams adopt Reins
 
@@ -118,6 +155,8 @@ graph LR
 
 ```bash
 reins init .           # Scaffold the full structure
+reins init . --pack auto  # Adaptive pack selection from project signals
+reins init . --pack agent-factory  # Optional advanced automation pack
 reins audit .          # Score against harness principles (0-18)
 reins evolve .         # Roadmap to next maturity level
 reins doctor .         # Health check with prescriptive fixes
@@ -169,6 +208,25 @@ docs/
   references/                    # External LLM-friendly reference docs
   generated/                     # Auto-generated docs (schema, API specs)
 ```
+
+Optional pack:
+
+```bash
+reins init . --pack auto
+reins init . --pack agent-factory
+```
+
+`--pack auto` keeps base scaffold for unknown stacks and selects `agent-factory` when the repo looks Node/JS compatible.
+
+`--pack agent-factory` adds an advanced automation layer:
+- `scripts/lint-structure.mjs` (hard structural gate)
+- `scripts/doc-gardener.mjs` + `scripts/check-changed-doc-freshness.mjs` (docs freshness loop)
+- `scripts/pr-review.mjs` (soft golden-principles reviewer)
+- `.github/workflows/risk-policy-gate.yml` (risk-tier + docs drift checks)
+- `.github/workflows/pr-review-bot.yml` (PR feedback loop)
+- `.github/workflows/structural-lint.yml` (CI enforcement gate)
+
+`reins evolve` now includes pack recommendations and `reins evolve . --apply` can scaffold compatible pack automation into an existing repo.
 
 ## The six audit dimensions
 
@@ -230,7 +288,9 @@ For CLI repositories, Reins treats strong diagnosability signals (for example `d
 ```
 reins/
   cli/reins/            # The CLI tool (Bun + TypeScript, zero deps)
-    src/index.ts        # Single-file CLI
+    src/index.ts        # Thin CLI router
+    src/lib/commands/   # Command handlers (init/audit/doctor/evolve)
+    src/lib/audit/      # Audit runtime context + scoring internals
     package.json
   skill/                # Agent skill (Claude Code)
     Reins/

@@ -6,7 +6,7 @@ Score an existing project against harness engineering principles. Produces a str
 
 Run the CLI first:
 - Local source: `cd cli/reins && bun src/index.ts audit <path>`
-- Package mode: `npx reins-cli audit <path>`
+- Package mode: `npx reins-cli@latest audit <path>`
 
 For remediation detail, pair with doctor:
 - `reins doctor <path>`

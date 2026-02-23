@@ -6,7 +6,7 @@ Upgrade a project to the next Reins maturity level.
 
 Run:
 - Local source: `cd cli/reins && bun src/index.ts evolve <path>`
-- Package mode: `npx reins-cli evolve <path>`
+- Package mode: `npx reins-cli@latest evolve <path>`
 
 Optional flag:
 - `--apply` (limited auto-apply support)
