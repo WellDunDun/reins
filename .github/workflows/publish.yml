@@ -65,55 +65,29 @@ jobs:
           CURRENT=$(node -p "require('./package.json').version")
           PUBLISHED=$(npm view reins-cli version 2>/dev/null || echo "0.0.0")
           if [ "$CURRENT" = "$PUBLISHED" ]; then
-            echo "needs_bump=true" >> "$GITHUB_OUTPUT"
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
           else
-            echo "needs_bump=false" >> "$GITHUB_OUTPUT"
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
           fi
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
 
-      - name: Bump patch version
-        if: steps.check.outputs.needs_bump == 'true'
-        working-directory: cli/reins
+      - name: Skip publish when version is already on npm
+        if: steps.check.outputs.should_publish == 'false'
         run: |
-          npm version patch --no-git-tag-version
-          NEW_VERSION=$(node -p "require('./package.json').version")
-          echo "NEW_VERSION=$NEW_VERSION" >> "$GITHUB_ENV"
-
-      - name: Use existing version
-        if: steps.check.outputs.needs_bump == 'false'
-        working-directory: cli/reins
-        run: |
-          NEW_VERSION=$(node -p "require('./package.json').version")
-          echo "NEW_VERSION=$NEW_VERSION" >> "$GITHUB_ENV"
-
-      - name: Sync root package.json version
-        if: steps.check.outputs.needs_bump == 'true'
-        run: |
-          node -e "
-            const pkg = require('./package.json');
-            pkg.version = '${{ env.NEW_VERSION }}';
-            require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-          "
-
-      - name: Commit version bump
-        if: steps.check.outputs.needs_bump == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add cli/reins/package.json package.json
-          git commit -m "chore: bump version to v${{ env.NEW_VERSION }} [skip ci]"
-          git push
+          echo "Skipping publish: reins-cli@${{ steps.check.outputs.current }} already exists on npm."
 
       - name: Publish to npm
+        if: steps.check.outputs.should_publish == 'true'
         working-directory: cli/reins
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
+        if: steps.check.outputs.should_publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ env.NEW_VERSION }}
-          name: v${{ env.NEW_VERSION }}
+          tag_name: v${{ steps.check.outputs.current }}
+          name: v${{ steps.check.outputs.current }}
           generate_release_notes: true
           make_latest: true
