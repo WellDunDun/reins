@@ -29,6 +29,7 @@ See ARCHITECTURE.md for domain map, module structure, and dependency rules.
 | Golden Principles | docs/golden-principles.md | Current |
 | CI Pipeline | .github/workflows/ci.yml | Current |
 | Publish Pipeline | .github/workflows/publish.yml | Current |
+| Version Bump Pipeline | .github/workflows/auto-bump-cli-version.yml | Current |
 
 ## Development Workflow
 
