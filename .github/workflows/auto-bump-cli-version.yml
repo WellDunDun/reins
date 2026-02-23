@@ -40,9 +40,11 @@ jobs:
 
       - name: Bump CLI patch version and sync root package version
         if: steps.versions.outputs.base == steps.versions.outputs.head
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
         run: |
           cd cli/reins
-          npm version patch --no-git-tag-version
+          npm version patch --no-git-tag-version --ignore-scripts
           cd ../..
           NEW_VERSION=$(node -p "require('./cli/reins/package.json').version")
           node -e "const fs=require('fs');const p='./package.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));j.version='${NEW_VERSION}';fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n')"
@@ -50,7 +52,11 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add cli/reins/package.json package.json
           git commit -m "chore: bump cli version to v${NEW_VERSION} [skip ci]" || exit 0
-          git push origin "HEAD:${{ github.head_ref }}"
+          if [[ ! "$BRANCH_NAME" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "Invalid head ref: $BRANCH_NAME"
+            exit 1
+          fi
+          git push origin "HEAD:refs/heads/${BRANCH_NAME}"
 
       - name: Version already bumped in PR
         if: steps.versions.outputs.base != steps.versions.outputs.head
