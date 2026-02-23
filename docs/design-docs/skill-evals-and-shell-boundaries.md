@@ -70,6 +70,7 @@ Implementation requirement:
 1. Use `stderr` JSON objects for recoverable command failures (for example: scaffolding/apply failures).
 2. Exit nonzero (`exit 1`) without emitting unstructured stack traces.
 3. Keep message shape stable (`{ "error": "..." }`) so skill parsers can rely on it.
+4. Skill parsers and CI consumers must capture `stderr` independently from `stdout` to observe structured failure payloads.
 
 Rationale:
 1. Skills parse CLI output programmatically; unstructured exceptions break routing and remediation logic.
