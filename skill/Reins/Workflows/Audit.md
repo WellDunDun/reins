@@ -1,6 +1,15 @@
-# Audit Workflow
+# Reins Audit Workflow
 
 Score an existing project against harness engineering principles. Produces a structured assessment with actionable recommendations.
+
+## Default Command
+
+Run the CLI first:
+- Local source: `cd cli/reins && bun src/index.ts audit <path>`
+- Package mode: `npx reins-cli audit <path>`
+
+For remediation detail, pair with doctor:
+- `reins doctor <path>`
 
 ## Audit Dimensions
 
@@ -31,7 +40,7 @@ Score each dimension 0-3:
 | Check | Points |
 |-------|--------|
 | App bootable per worktree/branch (monorepo-aware: detects workspace packages, checks per-workspace bootability) | +1 |
-| Observability accessible to agents (modern platforms: Sentry, Vercel, Netlify, Docker, local stacks) | +1 |
+| Observability accessible to agents (services: Sentry/Vercel/Netlify/Docker; CLIs: diagnosability signals such as doctor/help/error surfaces and CI diagnostics) | +1 |
 | Boring tech stack, minimal opaque dependencies (monorepo-aware: per-workspace average dependency count) | +1 |
 
 ### 4. Golden Principles (0-3)

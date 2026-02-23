@@ -6,6 +6,14 @@
 
 Build and ship software with **zero manually-written code**. Humans design environments, specify intent, and build feedback loops. Agents write all code, tests, CI, docs, and tooling.
 
+## Reins CLI Mapping
+
+Reins turns the methodology into four operational commands:
+- `reins init` — scaffold repository knowledge and governance artifacts
+- `reins audit` — score maturity across six dimensions (0-18)
+- `reins doctor` — produce actionable pass/fail/warn health checks
+- `reins evolve` — generate step-by-step upgrades to the next level
+
 ## The Five Pillars
 
 ### 1. Repository as System of Record
@@ -66,6 +74,7 @@ Optimize everything for agent understanding:
 - Wire Chrome DevTools Protocol into agent runtime (DOM snapshots, screenshots, navigation)
 - Expose logs/metrics/traces via local observability stack (LogQL, PromQL, TraceQL)
 - Ephemeral observability per worktree, torn down after task completion
+- For CLI-first repositories, prioritize diagnosability surfaces (structured command output, doctor/help commands, deterministic error metadata) when full service observability is not relevant
 - Prefer "boring" technology — composable, stable APIs, well-represented in training data
 - Reimplement simple utilities rather than pulling opaque dependencies
 

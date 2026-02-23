@@ -26,6 +26,18 @@ Layer 1: THE CODEBASE
 
 Reins operates at the structural layer. It ensures the repository is agent-legible — that knowledge is captured in-repo, architecture is documented and enforced, and engineering taste scales through automation rather than review.
 
+### Agent Onboarding via skills.sh
+
+Reins is distributed as an installable skill:
+
+```bash
+npx skills add WellDunDun/reins
+```
+
+Once installed, the agent can discover the Reins workflows and run the CLI directly:
+- local source mode (inside this repo): `cd cli/reins && bun src/index.ts <command> ../..`
+- package mode (any repo): `npx reins-cli <command> <target-path>`
+
 **Core operations:**
 - `reins init` — scaffold the full harness engineering structure
 - `reins audit` — score the repo on 6 dimensions (0-18)

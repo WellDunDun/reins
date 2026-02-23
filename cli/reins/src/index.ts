@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
-import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, statSync } from "fs";
-import { join, resolve, basename } from "path";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { basename, join, resolve } from "node:path";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -34,6 +34,14 @@ interface InitOptions {
   force: boolean;
 }
 
+type DoctorStatus = "pass" | "fail" | "warn";
+
+interface DoctorCheck {
+  check: string;
+  status: DoctorStatus;
+  fix: string;
+}
+
 // ─── Templates ──────────────────────────────────────────────────────────────
 
 function agentsMdTemplate(projectName: string): string {
@@ -58,6 +66,7 @@ See ARCHITECTURE.md for domain map, package layering, and dependency rules.
 | Active Plans | docs/exec-plans/active/ | Current |
 | Completed Plans | docs/exec-plans/completed/ | Current |
 | Technical Debt | docs/exec-plans/tech-debt-tracker.md | Current |
+| Risk Policy | risk-policy.json | Current |
 | Golden Principles | docs/golden-principles.md | Current |
 | References | docs/references/ | Current |
 
@@ -271,6 +280,25 @@ Track known technical debt with priority and ownership.
 `;
 }
 
+function riskPolicyTemplate(): string {
+  return `{
+  "version": 1,
+  "tiers": ["low", "medium", "high"],
+  "watchPaths": ["src/", "docs/", "skill/"],
+  "docsDriftRules": [
+    {
+      "watch": "src/",
+      "docs": ["ARCHITECTURE.md", "docs/design-docs/index.md", "docs/golden-principles.md"]
+    },
+    {
+      "watch": "skill/",
+      "docs": ["AGENTS.md", "skill/Reins/HarnessMethodology.md"]
+    }
+  ]
+}
+`;
+}
+
 function designDocsIndexTemplate(): string {
   return `# Design Documents Index
 
@@ -316,23 +344,60 @@ Registry of all product specifications.
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function findFiles(dir: string, pattern: RegExp, maxDepth: number = 3): string[] {
-  const results: string[] = [];
-  function walk(current: string, depth: number) {
-    if (depth > maxDepth) return;
-    try {
-      const entries = readdirSync(current);
-      for (const entry of entries) {
-        if (['node_modules', '.git', 'dist', 'build', '.next', '.expo'].includes(entry)) continue;
-        const full = join(current, entry);
-        try {
-          const stat = statSync(full);
-          if (stat.isDirectory()) walk(full, depth + 1);
-          else if (pattern.test(entry)) results.push(full);
-        } catch { /* skip inaccessible */ }
-      }
-    } catch { /* skip inaccessible */ }
+const IGNORED_DIRS = new Set(["node_modules", ".git", "dist", "build", ".next", ".expo"]);
+
+function safeReadDir(dir: string): string[] {
+  try {
+    return readdirSync(dir);
+  } catch {
+    return [];
   }
+}
+
+function safeStat(path: string): ReturnType<typeof statSync> | null {
+  try {
+    return statSync(path);
+  } catch {
+    return null;
+  }
+}
+
+function collectFileMatch(
+  current: string,
+  entry: string,
+  depth: number,
+  maxDepth: number,
+  pattern: RegExp,
+  results: string[],
+  walk: (next: string, nextDepth: number) => void,
+): void {
+  if (IGNORED_DIRS.has(entry)) return;
+
+  const fullPath = join(current, entry);
+  const stat = safeStat(fullPath);
+  if (!stat) return;
+
+  if (stat.isDirectory()) {
+    walk(fullPath, depth + 1);
+    return;
+  }
+
+  if (depth <= maxDepth && pattern.test(entry)) {
+    results.push(fullPath);
+  }
+}
+
+function findFiles(dir: string, pattern: RegExp, maxDepth = 3): string[] {
+  const results: string[] = [];
+
+  function walk(current: string, depth: number): void {
+    if (depth > maxDepth) return;
+
+    for (const entry of safeReadDir(current)) {
+      collectFileMatch(current, entry, depth, maxDepth, pattern, results, walk);
+    }
+  }
+
   walk(dir, 0);
   return results;
 }
@@ -345,26 +410,150 @@ function countGoldenPrinciples(content: string): number {
 
 function scanWorkflowsForEnforcement(workflowDir: string): string[] {
   const steps: Set<string> = new Set();
-  const keywords = ['lint', 'test', 'typecheck', 'type-check', 'build', 'audit', 'check', 'prettier', 'format'];
+  const keywordPatterns: Array<{ step: string; pattern: RegExp }> = [
+    { step: "lint", pattern: /\b(lint|eslint|biome\s+check)\b/ },
+    { step: "test", pattern: /\b(test|vitest|jest)\b/ },
+    { step: "typecheck", pattern: /\b(typecheck|type-check|tsc\s+--no-?emit)\b/ },
+    { step: "build", pattern: /\bbuild\b/ },
+    { step: "audit", pattern: /\baudit\b/ },
+    { step: "prettier", pattern: /\bprettier\b/ },
+    { step: "format", pattern: /\bformat\b/ },
+  ];
   try {
-    const files = readdirSync(workflowDir).filter(f => f.endsWith('.yml') || f.endsWith('.yaml'));
+    const files = readdirSync(workflowDir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
     for (const file of files) {
-      const content = readFileSync(join(workflowDir, file), 'utf-8').toLowerCase();
-      for (const kw of keywords) {
-        if (content.includes(kw)) steps.add(kw);
+      const content = readFileSync(join(workflowDir, file), "utf-8").toLowerCase();
+      for (const { step, pattern } of keywordPatterns) {
+        if (pattern.test(content)) steps.add(step);
       }
     }
-  } catch { /* no workflows */ }
+  } catch {
+    /* no workflows */
+  }
   return [...steps];
 }
 
 function detectMonorepoWorkspaces(pkgJsonPath: string): string[] {
   try {
-    const pkg = JSON.parse(readFileSync(pkgJsonPath, 'utf-8'));
+    const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf-8"));
     const workspaces = pkg.workspaces?.packages || pkg.workspaces;
     if (Array.isArray(workspaces)) return workspaces;
   } catch {}
   return [];
+}
+
+function isCliPackage(pkg: Record<string, unknown>): boolean {
+  const hasBin =
+    typeof pkg.bin === "string" ||
+    (typeof pkg.bin === "object" && pkg.bin !== null && Object.keys(pkg.bin as Record<string, unknown>).length > 0);
+  const hasCliName = typeof pkg.name === "string" && /(^|[-_])cli($|[-_])/.test(pkg.name);
+  const hasCliKeywords =
+    Array.isArray(pkg.keywords) &&
+    pkg.keywords.some((k) => typeof k === "string" && /(cli|command-?line|terminal)/i.test(k));
+  return hasBin || hasCliName || hasCliKeywords;
+}
+
+function detectCliProject(targetDir: string, rootPkgJsonPath: string): boolean {
+  if (existsSync(rootPkgJsonPath)) {
+    try {
+      const rootPkg = JSON.parse(readFileSync(rootPkgJsonPath, "utf-8"));
+      if (isCliPackage(rootPkg)) return true;
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  const pkgJsonFiles = findFiles(targetDir, /^package\.json$/, 4).filter(
+    (f) => f !== rootPkgJsonPath && !f.includes("node_modules"),
+  );
+  for (const pkgPath of pkgJsonFiles) {
+    try {
+      const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+      if (isCliPackage(pkg)) return true;
+    } catch {
+      // ignore parse errors
+    }
+  }
+  return false;
+}
+
+function detectReadmeSignals(targetDir: string): string[] {
+  const readmePath = join(targetDir, "README.md");
+  if (!existsSync(readmePath)) return [];
+
+  try {
+    const readmeContent = readFileSync(readmePath, "utf-8");
+    return /\bdoctor\b|\bhealth check\b/i.test(readmeContent) ? ["doctor docs"] : [];
+  } catch {
+    return [];
+  }
+}
+
+function detectWorkflowSignals(targetDir: string): string[] {
+  const workflowDir = join(targetDir, ".github", "workflows");
+  if (!existsSync(workflowDir)) return [];
+
+  try {
+    const files = readdirSync(workflowDir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
+    for (const file of files) {
+      const workflowContent = readFileSync(join(workflowDir, file), "utf-8");
+      if (/\baudit\b|\bdoctor\b/i.test(workflowContent)) return ["ci diagnostic checks"];
+    }
+  } catch {
+    return [];
+  }
+
+  return [];
+}
+
+function detectSourceSignals(targetDir: string): string[] {
+  const sourceFiles = findFiles(targetDir, /^index\.(ts|js|mjs|cjs)$/, 5).filter((f) => !f.includes("node_modules"));
+  for (const file of sourceFiles) {
+    try {
+      const sourceContent = readFileSync(file, "utf-8");
+      if (/function\s+doctor\s*\(|--help|Unknown command|printHelp/i.test(sourceContent)) {
+        return ["cli diagnostic command surface"];
+      }
+    } catch {
+      // ignore read errors
+    }
+  }
+
+  return [];
+}
+
+function detectTestSignals(targetDir: string): string[] {
+  const testFiles = findFiles(targetDir, /\.(test|spec)\.(ts|js|mjs|cjs)$/, 5).filter(
+    (f) => !f.includes("node_modules"),
+  );
+  for (const file of testFiles) {
+    try {
+      const testContent = readFileSync(file, "utf-8");
+      if (/--help|Unknown command|doctor/i.test(testContent)) return ["cli diagnostic tests"];
+    } catch {
+      // ignore read errors
+    }
+  }
+
+  return [];
+}
+
+function detectCliDiagnosabilitySignals(targetDir: string): string[] {
+  const signals = new Set<string>();
+  const probes = [
+    detectReadmeSignals(targetDir),
+    detectWorkflowSignals(targetDir),
+    detectSourceSignals(targetDir),
+    detectTestSignals(targetDir),
+  ];
+
+  for (const probeSignals of probes) {
+    for (const signal of probeSignals) {
+      signals.add(signal);
+    }
+  }
+
+  return [...signals];
 }
 
 // ─── Commands ───────────────────────────────────────────────────────────────
@@ -384,7 +573,7 @@ function init(options: InitOptions): void {
       JSON.stringify({
         error: "AGENTS.md already exists. Use --force to overwrite.",
         hint: "Run 'reins audit' to assess your current setup instead.",
-      })
+      }),
     );
     process.exit(1);
   }
@@ -405,7 +594,7 @@ function init(options: InitOptions): void {
     const fullPath = join(targetDir, dir);
     if (!existsSync(fullPath)) {
       mkdirSync(fullPath, { recursive: true });
-      created.push(dir + "/");
+      created.push(`${dir}/`);
     }
   }
 
@@ -413,6 +602,7 @@ function init(options: InitOptions): void {
   const files: Array<{ path: string; content: string }> = [
     { path: "AGENTS.md", content: agentsMdTemplate(projectName) },
     { path: "ARCHITECTURE.md", content: architectureMdTemplate(projectName) },
+    { path: "risk-policy.json", content: riskPolicyTemplate() },
     { path: "docs/golden-principles.md", content: goldenPrinciplesTemplate() },
     { path: "docs/design-docs/index.md", content: designDocsIndexTemplate() },
     { path: "docs/design-docs/core-beliefs.md", content: coreBeliefsTemplate() },
@@ -438,26 +628,39 @@ function init(options: InitOptions): void {
         next_steps: [
           "Edit AGENTS.md — fill in the project description",
           "Edit ARCHITECTURE.md — define your business domains",
+          "Review risk-policy.json — set tiers and docs drift rules for your repo",
           "Edit docs/golden-principles.md — customize rules for your project",
           "Run 'reins audit .' to see your starting score",
         ],
       },
       null,
-      2
-    )
+      2,
+    ),
   );
 }
 
-function runAudit(targetPath: string): AuditResult {
-  const targetDir = resolve(targetPath);
+interface AuditRuntimeContext {
+  targetDir: string;
+  pkgJsonPath: string;
+  docsDir: string;
+  execPlansDir: string;
+  archMdPath: string;
+  workflowDir: string;
+  goldenPath: string;
+  hasRiskPolicy: boolean;
+  hasEslint: boolean;
+  hasBiome: boolean;
+  hasStructuralLintScript: boolean;
+  ciEnforcementSteps: string[];
+  monorepoWorkspaces: string[];
+  isMonorepo: boolean;
+  isCliRepo: boolean;
+  verifiedDocs: string[];
+  hasCleanupDocs: boolean;
+}
 
-  if (!existsSync(targetDir)) {
-    throw new Error(`Directory does not exist: ${targetDir}`);
-  }
-
-  const projectName = basename(targetDir);
-
-  const result: AuditResult = {
+function createAuditResult(projectName: string): AuditResult {
+  return {
     project: projectName,
     timestamp: new Date().toISOString(),
     scores: {
@@ -473,62 +676,103 @@ function runAudit(targetPath: string): AuditResult {
     maturity_level: "L0",
     recommendations: [],
   };
+}
 
-  // ── Repository Knowledge ──────────────────────────────────────────────
+function readVerifiedDocs(targetDir: string): string[] {
+  const allDocFiles = findFiles(targetDir, /\.(md|markdown)$/);
+  return allDocFiles.filter((file) => {
+    try {
+      return readFileSync(file, "utf-8").includes("<!-- Verified:");
+    } catch {
+      return false;
+    }
+  });
+}
 
-  const agentsMd = join(targetDir, "AGENTS.md");
-  if (existsSync(agentsMd)) {
-    const content = readFileSync(agentsMd, "utf-8");
-    const lines = content.split("\n").length;
+function buildAuditRuntimeContext(targetDir: string): AuditRuntimeContext {
+  const pkgJsonPath = join(targetDir, "package.json");
+  const docsDir = join(targetDir, "docs");
+  const workflowDir = join(targetDir, ".github", "workflows");
+  const archMdPath = join(targetDir, "ARCHITECTURE.md");
+  const goldenPath = join(targetDir, "docs", "golden-principles.md");
+  const execPlansDir = join(targetDir, "docs", "exec-plans");
+  const hasRiskPolicy = existsSync(join(targetDir, "risk-policy.json"));
+  const hasEslint =
+    existsSync(join(targetDir, ".eslintrc.json")) ||
+    existsSync(join(targetDir, ".eslintrc.js")) ||
+    existsSync(join(targetDir, "eslint.config.js")) ||
+    existsSync(join(targetDir, "eslint.config.mjs"));
+  const hasBiome = existsSync(join(targetDir, "biome.json"));
+  const structuralLintScripts = existsSync(join(targetDir, "scripts"))
+    ? findFiles(join(targetDir, "scripts"), /lint|structure/i, 1)
+    : [];
+  const hasStructuralLintScript = structuralLintScripts.length > 0;
+  const ciEnforcementSteps = existsSync(workflowDir) ? scanWorkflowsForEnforcement(workflowDir) : [];
+  const monorepoWorkspaces = existsSync(pkgJsonPath) ? detectMonorepoWorkspaces(pkgJsonPath) : [];
+  const isMonorepo = monorepoWorkspaces.length > 0;
+  const isCliRepo = detectCliProject(targetDir, pkgJsonPath);
+  const verifiedDocs = readVerifiedDocs(targetDir);
+  const hasCleanupDocs = existsSync(join(targetDir, "docs", "exec-plans", "tech-debt-tracker.md"));
+
+  return {
+    targetDir,
+    pkgJsonPath,
+    docsDir,
+    execPlansDir,
+    archMdPath,
+    workflowDir,
+    goldenPath,
+    hasRiskPolicy,
+    hasEslint,
+    hasBiome,
+    hasStructuralLintScript,
+    ciEnforcementSteps,
+    monorepoWorkspaces,
+    isMonorepo,
+    isCliRepo,
+    verifiedDocs,
+    hasCleanupDocs,
+  };
+}
+
+function scoreRepositoryAgents(result: AuditResult, ctx: AuditRuntimeContext): void {
+  const agentsMdPath = join(ctx.targetDir, "AGENTS.md");
+  if (existsSync(agentsMdPath)) {
+    const lines = readFileSync(agentsMdPath, "utf-8").split("\n").length;
     if (lines <= 150) {
       result.scores.repository_knowledge.score++;
       result.scores.repository_knowledge.findings.push(`AGENTS.md exists (${lines} lines)`);
     } else {
-      result.scores.repository_knowledge.findings.push(
-        `AGENTS.md exists but too long (${lines} lines, target: <150)`
-      );
+      result.scores.repository_knowledge.findings.push(`AGENTS.md exists but too long (${lines} lines, target: <150)`);
     }
   } else {
     result.scores.repository_knowledge.findings.push("AGENTS.md missing");
     result.recommendations.push("Create AGENTS.md as a concise map (~100 lines) — run 'reins init .'");
   }
 
-  // Bonus: Per-package AGENTS.md detection
-  const allAgentsMd = findFiles(targetDir, /^AGENTS\.md$/);
+  const allAgentsMd = findFiles(ctx.targetDir, /^AGENTS\.md$/);
   if (allAgentsMd.length >= 2) {
-    result.scores.repository_knowledge.findings.push(
-      `Hierarchical AGENTS.md detected (${allAgentsMd.length} files)`
-    );
+    result.scores.repository_knowledge.findings.push(`Hierarchical AGENTS.md detected (${allAgentsMd.length} files)`);
+  }
+}
+
+function scoreRepositoryDocs(result: AuditResult, ctx: AuditRuntimeContext): void {
+  if (ctx.verifiedDocs.length > 0) {
+    result.scores.repository_knowledge.findings.push(`Verification headers found in ${ctx.verifiedDocs.length} doc(s)`);
   }
 
-  // Bonus: Verification headers detection
-  const allDocFiles = findFiles(targetDir, /\.(md|markdown)$/);
-  const verifiedDocs = allDocFiles.filter(f => {
-    try { return readFileSync(f, 'utf-8').includes('<!-- Verified:'); } catch { return false; }
-  });
-  if (verifiedDocs.length > 0) {
-    result.scores.repository_knowledge.findings.push(
-      `Verification headers found in ${verifiedDocs.length} doc(s)`
-    );
-  }
-
-  const docsDir = join(targetDir, "docs");
-  if (existsSync(docsDir)) {
-    const hasDesignDocs = existsSync(join(docsDir, "design-docs"));
-    const hasIndex = existsSync(join(docsDir, "design-docs", "index.md"));
+  if (existsSync(ctx.docsDir)) {
+    const hasDesignDocs = existsSync(join(ctx.docsDir, "design-docs"));
+    const hasIndex = existsSync(join(ctx.docsDir, "design-docs", "index.md"));
     if (hasDesignDocs && hasIndex) {
       result.scores.repository_knowledge.score++;
       result.scores.repository_knowledge.findings.push("docs/design-docs/ with index exists");
 
-      // Design decision count
-      const indexContent = readFileSync(join(docsDir, "design-docs", "index.md"), "utf-8");
-      const tableRows = indexContent.split("\n").filter(l => l.includes("|")).length;
-      // Subtract header rows (header + separator = 2)
+      const indexContent = readFileSync(join(ctx.docsDir, "design-docs", "index.md"), "utf-8");
+      const tableRows = indexContent.split("\n").filter((line) => line.includes("|")).length;
       const dataRows = Math.max(0, tableRows - 2);
       if (dataRows >= 3) {
-        result.scores.repository_knowledge.findings.push(
-          `${dataRows} design decisions documented`
-        );
+        result.scores.repository_knowledge.findings.push(`${dataRows} design decisions documented`);
       }
     } else if (hasDesignDocs) {
       result.scores.repository_knowledge.findings.push("docs/design-docs/ exists but missing index.md");
@@ -539,11 +783,12 @@ function runAudit(targetPath: string): AuditResult {
     result.scores.repository_knowledge.findings.push("docs/ directory missing");
     result.recommendations.push("Create docs/ directory structure — run 'reins init .'");
   }
+}
 
-  const execPlans = join(targetDir, "docs", "exec-plans");
-  if (existsSync(execPlans)) {
-    const hasActive = existsSync(join(execPlans, "active"));
-    const hasCompleted = existsSync(join(execPlans, "completed"));
+function scoreRepositoryExecutionPlans(result: AuditResult, ctx: AuditRuntimeContext): void {
+  if (existsSync(ctx.execPlansDir)) {
+    const hasActive = existsSync(join(ctx.execPlansDir, "active"));
+    const hasCompleted = existsSync(join(ctx.execPlansDir, "completed"));
     if (hasActive && hasCompleted) {
       result.scores.repository_knowledge.score++;
       result.scores.repository_knowledge.findings.push("Execution plans versioned in-repo");
@@ -553,21 +798,51 @@ function runAudit(targetPath: string): AuditResult {
   } else {
     result.scores.repository_knowledge.findings.push("No versioned execution plans");
   }
+}
 
-  // ── Architecture Enforcement ──────────────────────────────────────────
+function scoreRepositoryKnowledge(result: AuditResult, ctx: AuditRuntimeContext): void {
+  scoreRepositoryAgents(result, ctx);
+  scoreRepositoryDocs(result, ctx);
+  scoreRepositoryExecutionPlans(result, ctx);
+}
 
-  const archMd = join(targetDir, "ARCHITECTURE.md");
-  // Combined check: ARCHITECTURE.md exists AND has dependency direction content
-  if (existsSync(archMd)) {
-    const archContent = readFileSync(archMd, "utf-8");
+function hasDeepLinterEnforcement(ctx: AuditRuntimeContext): boolean {
+  if (ctx.hasStructuralLintScript) return true;
+
+  const linterConfigs = [".eslintrc.json", ".eslintrc.js", "eslint.config.js", "eslint.config.mjs", "biome.json"];
+  for (const cfg of linterConfigs) {
+    const cfgPath = join(ctx.targetDir, cfg);
+    if (!existsSync(cfgPath)) continue;
+
+    try {
+      const cfgContent = readFileSync(cfgPath, "utf-8");
+      if (/no-restricted-imports|import\/no-default-export|boundaries|dependency/i.test(cfgContent)) {
+        return true;
+      }
+
+      if (cfg === "biome.json") {
+        const rulesMatch = cfgContent.match(
+          /"(recommended|all|suspicious|correctness|style|complexity|nursery|performance|security|a11y)"/g,
+        );
+        if (rulesMatch && rulesMatch.length >= 5) return true;
+      }
+    } catch {
+      // ignore broken linter config
+    }
+  }
+
+  return false;
+}
+
+function scoreArchitectureEnforcement(result: AuditResult, ctx: AuditRuntimeContext): void {
+  if (existsSync(ctx.archMdPath)) {
+    const archContent = readFileSync(ctx.archMdPath, "utf-8");
     if (/dependenc|layer|forward only|import/i.test(archContent)) {
       result.scores.architecture_enforcement.score++;
-      result.scores.architecture_enforcement.findings.push(
-        "ARCHITECTURE.md with dependency direction rules"
-      );
+      result.scores.architecture_enforcement.findings.push("ARCHITECTURE.md with dependency direction rules");
     } else {
       result.scores.architecture_enforcement.findings.push(
-        "ARCHITECTURE.md exists but lacks dependency direction rules"
+        "ARCHITECTURE.md exists but lacks dependency direction rules",
       );
       result.recommendations.push("Document dependency direction rules in ARCHITECTURE.md");
     }
@@ -576,43 +851,11 @@ function runAudit(targetPath: string): AuditResult {
     result.recommendations.push("Create ARCHITECTURE.md with domain map and layer rules");
   }
 
-  // Linter enforcement depth
-  const hasEslint =
-    existsSync(join(targetDir, ".eslintrc.json")) ||
-    existsSync(join(targetDir, ".eslintrc.js")) ||
-    existsSync(join(targetDir, "eslint.config.js")) ||
-    existsSync(join(targetDir, "eslint.config.mjs"));
-  const hasBiome = existsSync(join(targetDir, "biome.json"));
-  const structuralLintScripts = findFiles(join(targetDir, "scripts"), /lint|structure/i, 1);
-  const hasStructuralLintScript = existsSync(join(targetDir, "scripts")) && structuralLintScripts.length > 0;
-
-  if (hasEslint || hasBiome) {
-    let linterDeep = false;
-    // Check for architectural keywords in linter config
-    const linterConfigs = [".eslintrc.json", ".eslintrc.js", "eslint.config.js", "eslint.config.mjs", "biome.json"];
-    for (const cfg of linterConfigs) {
-      const cfgPath = join(targetDir, cfg);
-      if (existsSync(cfgPath)) {
-        try {
-          const cfgContent = readFileSync(cfgPath, "utf-8");
-          if (/no-restricted-imports|import\/no-default-export|boundaries|dependency/i.test(cfgContent)) {
-            linterDeep = true;
-          }
-          // biome.json with 5+ rules
-          if (cfg === "biome.json") {
-            const rulesMatch = cfgContent.match(/"(recommended|all|suspicious|correctness|style|complexity|nursery|performance|security|a11y)"/g);
-            if (rulesMatch && rulesMatch.length >= 5) linterDeep = true;
-          }
-        } catch { /* skip */ }
-      }
-    }
-    if (hasStructuralLintScript) linterDeep = true;
-
-    if (linterDeep) {
-      result.scores.architecture_enforcement.score++;
+  if (ctx.hasEslint || ctx.hasBiome) {
+    result.scores.architecture_enforcement.score++;
+    if (hasDeepLinterEnforcement(ctx)) {
       result.scores.architecture_enforcement.findings.push("Linter configuration found with architectural enforcement");
     } else {
-      result.scores.architecture_enforcement.score++;
       result.scores.architecture_enforcement.findings.push("Linter configuration found");
     }
   } else {
@@ -620,175 +863,197 @@ function runAudit(targetPath: string): AuditResult {
     result.recommendations.push("Add linter configuration to enforce architectural constraints");
   }
 
-  // Enforcement evidence: +1 if any 2 of these are true
-  const hasRiskPolicy = existsSync(join(targetDir, "risk-policy.json"));
-  const workflowDir = join(targetDir, ".github", "workflows");
-  const ciEnforcementSteps = existsSync(workflowDir) ? scanWorkflowsForEnforcement(workflowDir) : [];
-  const ciRefsEnforcement = ciEnforcementSteps.some(s => ['lint', 'test', 'typecheck', 'type-check'].includes(s));
-  const goldenPath = join(targetDir, "docs", "golden-principles.md");
-  let goldenEnforcementRatio = false;
-  if (existsSync(goldenPath)) {
-    const gpContent = readFileSync(goldenPath, "utf-8");
-    // Check if at least 1 principle has a linter reference
-    if (/lint|eslint|biome|enforced/i.test(gpContent) && (hasEslint || hasBiome)) {
-      goldenEnforcementRatio = true;
-    }
-  }
+  const ciRefsEnforcement = ctx.ciEnforcementSteps.some((step) =>
+    ["lint", "test", "typecheck", "type-check"].includes(step),
+  );
+  const goldenEnforcementRatio =
+    existsSync(ctx.goldenPath) &&
+    /lint|eslint|biome|enforced/i.test(readFileSync(ctx.goldenPath, "utf-8")) &&
+    (ctx.hasEslint || ctx.hasBiome);
+  const enforcementSignals = [
+    ctx.hasRiskPolicy,
+    ciRefsEnforcement,
+    ctx.hasStructuralLintScript,
+    goldenEnforcementRatio,
+  ].filter(Boolean).length;
 
-  const enforcementSignals = [hasRiskPolicy, ciRefsEnforcement, hasStructuralLintScript, goldenEnforcementRatio].filter(Boolean).length;
   if (enforcementSignals >= 2) {
     result.scores.architecture_enforcement.score++;
     result.scores.architecture_enforcement.findings.push(
-      `Enforcement evidence detected (${enforcementSignals} signals)`
+      `Enforcement evidence detected (${enforcementSignals} signals)`,
     );
   } else if (enforcementSignals === 1) {
-    result.scores.architecture_enforcement.findings.push(
-      "Partial enforcement evidence (need 2+ signals)"
-    );
+    result.scores.architecture_enforcement.findings.push("Partial enforcement evidence (need 2+ signals)");
   }
+}
 
-  // ── Agent Legibility ──────────────────────────────────────────────────
+function hasBootableWorkspace(ctx: AuditRuntimeContext): boolean {
+  for (const workspace of ctx.monorepoWorkspaces) {
+    const workspaceDir = join(ctx.targetDir, workspace.replace(/\*/g, ""));
+    if (!existsSync(workspaceDir)) continue;
 
-  // Check if app is bootable (look for dev scripts) — monorepo-aware
-  const pkgJson = join(targetDir, "package.json");
-  const monorepoWorkspaces = existsSync(pkgJson) ? detectMonorepoWorkspaces(pkgJson) : [];
-  const isMonorepo = monorepoWorkspaces.length > 0;
+    for (const entry of safeReadDir(workspaceDir)) {
+      const workspacePkgPath = join(workspaceDir, entry, "package.json");
+      if (!existsSync(workspacePkgPath)) continue;
 
-  if (existsSync(pkgJson)) {
-    try {
-      const pkg = JSON.parse(readFileSync(pkgJson, "utf-8"));
-      if (pkg.scripts?.dev || pkg.scripts?.start) {
-        result.scores.agent_legibility.score++;
-        result.scores.agent_legibility.findings.push("App has dev/start script (bootable)");
-      } else if (isMonorepo) {
-        // Check if any workspace has dev/start script
-        let workspaceBootable = false;
-        for (const ws of monorepoWorkspaces) {
-          const wsPattern = ws.replace(/\*/g, '');
-          const wsDir = join(targetDir, wsPattern);
-          if (existsSync(wsDir)) {
-            try {
-              const entries = readdirSync(wsDir);
-              for (const entry of entries) {
-                const wsPkg = join(wsDir, entry, "package.json");
-                if (existsSync(wsPkg)) {
-                  const wsPkgData = JSON.parse(readFileSync(wsPkg, "utf-8"));
-                  if (wsPkgData.scripts?.dev || wsPkgData.scripts?.start) {
-                    workspaceBootable = true;
-                    break;
-                  }
-                }
-              }
-            } catch { /* skip */ }
-          }
-          if (workspaceBootable) break;
-        }
-        if (workspaceBootable) {
-          result.scores.agent_legibility.score++;
-          result.scores.agent_legibility.findings.push(
-            `Monorepo detected with ${monorepoWorkspaces.length} workspace(s), bootable workspace found`
-          );
-        }
+      try {
+        const workspacePkg = JSON.parse(readFileSync(workspacePkgPath, "utf-8"));
+        if (workspacePkg.scripts?.dev || workspacePkg.scripts?.start) return true;
+      } catch {
+        // ignore parse failures
       }
-    } catch {
-      // ignore parse errors
     }
   }
 
-  // Check for observability config — expanded
+  return false;
+}
+
+function scoreObservability(result: AuditResult, ctx: AuditRuntimeContext): void {
   const obsFiles = ["docker-compose.yml", "docker-compose.yaml", "grafana", "prometheus.yml"];
   const hasTraditionalObs = obsFiles.some(
-    (f) => existsSync(join(targetDir, f)) || existsSync(join(targetDir, "infra", f))
+    (file) => existsSync(join(ctx.targetDir, file)) || existsSync(join(ctx.targetDir, "infra", file)),
   );
-  // Modern observability signals
-  const sentryFiles = findFiles(targetDir, /^sentry\.(client|server)\.config\./i, 1);
-  const hasVercelJson = existsSync(join(targetDir, "vercel.json"));
-  const hasNetlifyToml = existsSync(join(targetDir, "netlify.toml"));
+
+  const sentryFiles = findFiles(ctx.targetDir, /^sentry\.(client|server)\.config\./i, 1);
+  const hasVercelJson = existsSync(join(ctx.targetDir, "vercel.json"));
+  const hasNetlifyToml = existsSync(join(ctx.targetDir, "netlify.toml"));
   let hasSentryDep = false;
   let hasDatadogDep = false;
-  if (existsSync(pkgJson)) {
+  if (existsSync(ctx.pkgJsonPath)) {
     try {
-      const pkgContent = readFileSync(pkgJson, "utf-8");
+      const pkgContent = readFileSync(ctx.pkgJsonPath, "utf-8");
       hasSentryDep = pkgContent.includes("@sentry/");
       hasDatadogDep = pkgContent.includes("datadog-ci");
-    } catch { /* ignore */ }
+    } catch {
+      // ignore parse failures
+    }
   }
-  const hasSentryEnv = findFiles(targetDir, /^\.env\.sentry/i, 1).length > 0;
-  const hasModernObs = sentryFiles.length > 0 || hasVercelJson || hasNetlifyToml || hasSentryDep || hasDatadogDep || hasSentryEnv;
+
+  const hasSentryEnv = findFiles(ctx.targetDir, /^\.env\.sentry/i, 1).length > 0;
+  const hasModernObs =
+    sentryFiles.length > 0 || hasVercelJson || hasNetlifyToml || hasSentryDep || hasDatadogDep || hasSentryEnv;
 
   if (hasTraditionalObs || hasModernObs) {
     result.scores.agent_legibility.score++;
     result.scores.agent_legibility.findings.push("Observability configuration found");
-  } else {
-    result.scores.agent_legibility.findings.push("No observability stack detected");
+    return;
   }
 
-  // Dependency count — monorepo-aware
-  if (existsSync(pkgJson)) {
+  if (!ctx.isCliRepo) {
+    result.scores.agent_legibility.findings.push("No observability stack detected");
+    return;
+  }
+
+  const cliDiagSignals = detectCliDiagnosabilitySignals(ctx.targetDir);
+  if (cliDiagSignals.length >= 2) {
+    result.scores.agent_legibility.score++;
+    result.scores.agent_legibility.findings.push(`CLI diagnosability signals found (${cliDiagSignals.join(", ")})`);
+  } else {
+    result.scores.agent_legibility.findings.push("No observability or CLI diagnosability signals detected");
+  }
+}
+
+function scoreMonorepoDependencyFootprint(result: AuditResult, ctx: AuditRuntimeContext): void {
+  const workspacePkgFiles = findFiles(ctx.targetDir, /^package\.json$/, 3).filter(
+    (file) => file !== ctx.pkgJsonPath && !file.includes("node_modules"),
+  );
+  if (workspacePkgFiles.length === 0) return;
+
+  let totalDeps = 0;
+  let counted = 0;
+  for (const workspacePkg of workspacePkgFiles) {
     try {
-      if (isMonorepo) {
-        // Average workspace dependency counts
-        const wsPkgFiles = findFiles(targetDir, /^package\.json$/, 3).filter(
-          f => f !== pkgJson && !f.includes('node_modules')
+      const workspacePkgData = JSON.parse(readFileSync(workspacePkg, "utf-8"));
+      totalDeps += Object.keys(workspacePkgData.dependencies || {}).length;
+      counted++;
+    } catch {
+      // ignore parse failures
+    }
+  }
+
+  if (counted === 0) {
+    result.scores.agent_legibility.findings.push(
+      "No readable workspace package.json files for dependency footprint analysis",
+    );
+    return;
+  }
+
+  const avgDeps = Math.round(totalDeps / counted);
+  if (avgDeps < 30) {
+    result.scores.agent_legibility.score++;
+    result.scores.agent_legibility.findings.push(
+      `Lean workspace dependencies (avg ${avgDeps} across ${counted} packages)`,
+    );
+  } else {
+    result.scores.agent_legibility.findings.push(
+      `Heavy workspace dependencies (avg ${avgDeps} across ${counted} packages) — consider trimming`,
+    );
+  }
+}
+
+function scoreSinglePackageDependencyFootprint(result: AuditResult, ctx: AuditRuntimeContext): void {
+  const pkg = JSON.parse(readFileSync(ctx.pkgJsonPath, "utf-8"));
+  const depCount = Object.keys(pkg.dependencies || {}).length;
+  if (depCount < 20) {
+    result.scores.agent_legibility.score++;
+    result.scores.agent_legibility.findings.push(`Lean dependency set (${depCount} dependencies)`);
+  } else {
+    result.scores.agent_legibility.findings.push(`Heavy dependency set (${depCount} dependencies) — consider trimming`);
+  }
+}
+
+function scoreDependencyFootprint(result: AuditResult, ctx: AuditRuntimeContext): void {
+  if (!existsSync(ctx.pkgJsonPath)) return;
+
+  try {
+    if (ctx.isMonorepo) {
+      scoreMonorepoDependencyFootprint(result, ctx);
+      return;
+    }
+
+    scoreSinglePackageDependencyFootprint(result, ctx);
+  } catch {
+    // ignore parse failures
+  }
+}
+
+function scoreAgentLegibility(result: AuditResult, ctx: AuditRuntimeContext): void {
+  if (existsSync(ctx.pkgJsonPath)) {
+    try {
+      const pkg = JSON.parse(readFileSync(ctx.pkgJsonPath, "utf-8"));
+      if (pkg.scripts?.dev || pkg.scripts?.start) {
+        result.scores.agent_legibility.score++;
+        result.scores.agent_legibility.findings.push("App has dev/start script (bootable)");
+      } else if (ctx.isMonorepo && hasBootableWorkspace(ctx)) {
+        result.scores.agent_legibility.score++;
+        result.scores.agent_legibility.findings.push(
+          `Monorepo detected with ${ctx.monorepoWorkspaces.length} workspace(s), bootable workspace found`,
         );
-        if (wsPkgFiles.length > 0) {
-          let totalDeps = 0;
-          let counted = 0;
-          for (const wsPkg of wsPkgFiles) {
-            try {
-              const wsPkgData = JSON.parse(readFileSync(wsPkg, "utf-8"));
-              totalDeps += Object.keys(wsPkgData.dependencies || {}).length;
-              counted++;
-            } catch { /* skip */ }
-          }
-          const avgDeps = counted > 0 ? Math.round(totalDeps / counted) : 0;
-          if (avgDeps < 30) {
-            result.scores.agent_legibility.score++;
-            result.scores.agent_legibility.findings.push(
-              `Lean workspace dependencies (avg ${avgDeps} across ${counted} packages)`
-            );
-          } else {
-            result.scores.agent_legibility.findings.push(
-              `Heavy workspace dependencies (avg ${avgDeps} across ${counted} packages) — consider trimming`
-            );
-          }
-        }
-      } else {
-        const pkg = JSON.parse(readFileSync(pkgJson, "utf-8"));
-        const depCount = Object.keys(pkg.dependencies || {}).length;
-        if (depCount < 20) {
-          result.scores.agent_legibility.score++;
-          result.scores.agent_legibility.findings.push(
-            `Lean dependency set (${depCount} dependencies)`
-          );
-        } else {
-          result.scores.agent_legibility.findings.push(
-            `Heavy dependency set (${depCount} dependencies) — consider trimming`
-          );
-        }
       }
     } catch {
-      // ignore
+      // ignore parse failures
     }
   }
 
-  // ── Golden Principles ─────────────────────────────────────────────────
+  scoreObservability(result, ctx);
+  scoreDependencyFootprint(result, ctx);
+}
 
-  if (existsSync(goldenPath)) {
+function scoreGoldenPrinciples(result: AuditResult, ctx: AuditRuntimeContext): void {
+  if (existsSync(ctx.goldenPath)) {
     result.scores.golden_principles.score++;
-    const gpContent = readFileSync(goldenPath, "utf-8");
-    const principleCount = countGoldenPrinciples(gpContent);
+    const goldenContent = readFileSync(ctx.goldenPath, "utf-8");
+    const principleCount = countGoldenPrinciples(goldenContent);
+
     if (principleCount >= 5) {
-      result.scores.golden_principles.findings.push(
-        `Golden principles documented (${principleCount} principles)`
-      );
+      result.scores.golden_principles.findings.push(`Golden principles documented (${principleCount} principles)`);
     } else {
       result.scores.golden_principles.findings.push(
-        `Golden principles documented — only ${principleCount} principles, consider adding more`
+        `Golden principles documented — only ${principleCount} principles, consider adding more`,
       );
     }
-    // Anti-patterns detection
-    if (/anti-pattern|don['']t|never|avoid/i.test(gpContent)) {
+
+    if (/anti-pattern|don['']t|never|avoid/i.test(goldenContent)) {
       result.scores.golden_principles.findings.push("Anti-patterns documented");
     }
   } else {
@@ -796,134 +1061,128 @@ function runAudit(targetPath: string): AuditResult {
     result.recommendations.push("Create docs/golden-principles.md with mechanical taste rules");
   }
 
-  // Check for CI config (GitHub Actions, etc.)
   const ciPaths = [".github/workflows", ".gitlab-ci.yml", "Jenkinsfile", ".circleci"];
-  const hasCI = ciPaths.some((p) => existsSync(join(targetDir, p)));
+  const hasCI = ciPaths.some((path) => existsSync(join(ctx.targetDir, path)));
   if (hasCI) {
     result.scores.golden_principles.score++;
     result.scores.golden_principles.findings.push("CI pipeline exists for enforcement");
 
-    // CI enforcement quality enrichment
-    if (existsSync(workflowDir)) {
-      const enfSteps = scanWorkflowsForEnforcement(workflowDir);
-      if (enfSteps.length >= 3) {
-        result.scores.golden_principles.findings.push(
-          `CI enforces ${enfSteps.length} quality gates (${enfSteps.join(", ")})`
-        );
-      }
+    if (ctx.ciEnforcementSteps.length >= 3) {
+      result.scores.golden_principles.findings.push(
+        `CI enforces ${ctx.ciEnforcementSteps.length} quality gates (${ctx.ciEnforcementSteps.join(", ")})`,
+      );
     }
   } else {
     result.scores.golden_principles.findings.push("No CI pipeline detected");
   }
 
-  // Check for cleanup/refactoring process indicators
-  const hasCleanupDocs =
-    existsSync(join(targetDir, "docs", "exec-plans", "tech-debt-tracker.md"));
-  if (hasCleanupDocs) {
+  if (ctx.hasCleanupDocs) {
     result.scores.golden_principles.score++;
     result.scores.golden_principles.findings.push("Tech debt tracker exists");
   }
+}
 
-  // ── Agent Workflow ────────────────────────────────────────────────────
-
-  // Check for CLAUDE.md or similar agent config (also detect conductor.json)
+function scoreAgentWorkflowConfig(result: AuditResult, ctx: AuditRuntimeContext): void {
   const agentConfigs = ["CLAUDE.md", ".claude", "CODEX.md", ".cursor", "conductor.json"];
-  const hasAgentConfig = agentConfigs.some((f) => existsSync(join(targetDir, f)));
+  const hasAgentConfig = agentConfigs.some((file) => existsSync(join(ctx.targetDir, file)));
   if (hasAgentConfig) {
     result.scores.agent_workflow.score++;
     result.scores.agent_workflow.findings.push("Agent configuration found");
   } else {
     result.scores.agent_workflow.findings.push("No agent configuration (CLAUDE.md, .cursor, conductor.json, etc.)");
   }
+}
 
-  // Broader workflow check: PR template OR risk-policy OR issue templates OR conductor.json
+function scoreAgentWorkflowGovernance(result: AuditResult, ctx: AuditRuntimeContext): void {
   const hasPRTemplate =
-    existsSync(join(targetDir, ".github", "pull_request_template.md")) ||
-    existsSync(join(targetDir, ".github", "PULL_REQUEST_TEMPLATE.md"));
-  const hasIssueTemplates = existsSync(join(targetDir, ".github", "ISSUE_TEMPLATE"));
-  const hasConductor = existsSync(join(targetDir, "conductor.json"));
-
-  if (hasPRTemplate || hasRiskPolicy || hasIssueTemplates || hasConductor) {
+    existsSync(join(ctx.targetDir, ".github", "pull_request_template.md")) ||
+    existsSync(join(ctx.targetDir, ".github", "PULL_REQUEST_TEMPLATE.md"));
+  const hasIssueTemplates = existsSync(join(ctx.targetDir, ".github", "ISSUE_TEMPLATE"));
+  const hasConductor = existsSync(join(ctx.targetDir, "conductor.json"));
+  if (hasPRTemplate || ctx.hasRiskPolicy || hasIssueTemplates || hasConductor) {
     result.scores.agent_workflow.score++;
     const signals: string[] = [];
     if (hasPRTemplate) signals.push("PR template");
-    if (hasRiskPolicy) signals.push("risk-policy.json");
+    if (ctx.hasRiskPolicy) signals.push("risk-policy.json");
     if (hasIssueTemplates) signals.push("issue templates");
     if (hasConductor) signals.push("conductor.json");
     result.scores.agent_workflow.findings.push(`Workflow governance found (${signals.join(", ")})`);
   }
+}
 
-  // CI quality check: workflows directory with 2+ enforcement steps
-  if (existsSync(workflowDir)) {
-    const wfEnfSteps = ciEnforcementSteps.filter(s =>
-      ['lint', 'test', 'build', 'typecheck', 'type-check'].includes(s)
+function scoreAgentWorkflowCi(result: AuditResult, ctx: AuditRuntimeContext): void {
+  if (existsSync(ctx.workflowDir)) {
+    const workflowEnforcement = ctx.ciEnforcementSteps.filter((step) =>
+      ["lint", "test", "build", "typecheck", "type-check"].includes(step),
     );
-    if (wfEnfSteps.length >= 2) {
+    if (workflowEnforcement.length >= 2) {
       result.scores.agent_workflow.score++;
-      result.scores.agent_workflow.findings.push(
-        `CI workflows with enforcement (${wfEnfSteps.join(", ")})`
-      );
+      result.scores.agent_workflow.findings.push(`CI workflows with enforcement (${workflowEnforcement.join(", ")})`);
     } else {
-      result.scores.agent_workflow.findings.push(
-        "CI workflows exist but lack sufficient enforcement steps (need 2+)"
-      );
+      result.scores.agent_workflow.findings.push("CI workflows exist but lack sufficient enforcement steps (need 2+)");
+    }
+  }
+}
+
+function scoreAgentWorkflow(result: AuditResult, ctx: AuditRuntimeContext): void {
+  scoreAgentWorkflowConfig(result, ctx);
+  scoreAgentWorkflowGovernance(result, ctx);
+  scoreAgentWorkflowCi(result, ctx);
+}
+
+function hasActiveDocGardening(ctx: AuditRuntimeContext): boolean {
+  const hasDocGardeningIndex = existsSync(join(ctx.targetDir, "docs", "design-docs", "index.md"));
+  if (hasDocGardeningIndex) {
+    const docGardeningContent = readFileSync(join(ctx.targetDir, "docs", "design-docs", "index.md"), "utf-8");
+    if (/verif|status|last.*check/i.test(docGardeningContent)) return true;
+  }
+
+  const docGardenerScripts = existsSync(join(ctx.targetDir, "scripts"))
+    ? findFiles(join(ctx.targetDir, "scripts"), /doc-gardener|freshness/i, 1)
+    : [];
+  if (docGardenerScripts.length > 0) return true;
+
+  return ctx.verifiedDocs.length >= 3;
+}
+
+function hasQualityGrades(ctx: AuditRuntimeContext): boolean {
+  if (!existsSync(ctx.archMdPath)) return false;
+  const architectureContent = readFileSync(ctx.archMdPath, "utf-8");
+  return /quality.*grade|grade/i.test(architectureContent);
+}
+
+function hasDriftEnforcement(ctx: AuditRuntimeContext): boolean {
+  let riskPolicyDrift = false;
+  if (ctx.hasRiskPolicy) {
+    try {
+      const riskPolicyContent = readFileSync(join(ctx.targetDir, "risk-policy.json"), "utf-8");
+      riskPolicyDrift = /docsDriftRules|watchPaths/i.test(riskPolicyContent);
+    } catch {
+      // ignore parse failures
     }
   }
 
-  // ── Garbage Collection ────────────────────────────────────────────────
+  const docsDriftScripts = existsSync(join(ctx.targetDir, "scripts"))
+    ? findFiles(join(ctx.targetDir, "scripts"), /drift|docs-drift/i, 1)
+    : [];
+  return riskPolicyDrift || docsDriftScripts.length > 0;
+}
 
-  if (hasCleanupDocs) {
+function scoreGarbageCollection(result: AuditResult, ctx: AuditRuntimeContext): void {
+  if (ctx.hasCleanupDocs) {
     result.scores.garbage_collection.score++;
     result.scores.garbage_collection.findings.push("Tech debt tracked in-repo");
   } else {
     result.scores.garbage_collection.findings.push("No tech debt tracking");
   }
 
-  // Active doc-gardening: design-docs index with verification, OR doc-gardener script, OR 3+ verified docs
-  const hasDocGardening = existsSync(join(targetDir, "docs", "design-docs", "index.md"));
-  let docGardeningFound = false;
-  if (hasDocGardening) {
-    const dgContent = readFileSync(join(targetDir, "docs", "design-docs", "index.md"), "utf-8");
-    if (/verif|status|last.*check/i.test(dgContent)) {
-      docGardeningFound = true;
-    }
-  }
-  // Doc-gardener scripts
-  const docGardenerScripts = existsSync(join(targetDir, "scripts"))
-    ? findFiles(join(targetDir, "scripts"), /doc-gardener|freshness/i, 1)
-    : [];
-  if (docGardenerScripts.length > 0) docGardeningFound = true;
-  // Verification headers in 3+ docs
-  if (verifiedDocs.length >= 3) docGardeningFound = true;
-
-  if (docGardeningFound) {
+  if (hasActiveDocGardening(ctx)) {
     result.scores.garbage_collection.score++;
     result.scores.garbage_collection.findings.push("Active doc-gardening detected");
   }
 
-  // Quality grades OR drift enforcement
-  let qualityGradesFound = false;
-  if (existsSync(archMd)) {
-    const archContentGC = readFileSync(archMd, "utf-8");
-    if (/quality.*grade|grade/i.test(archContentGC)) {
-      qualityGradesFound = true;
-    }
-  }
-  // risk-policy.json with drift rules
-  let driftEnforcement = false;
-  if (hasRiskPolicy) {
-    try {
-      const rpContent = readFileSync(join(targetDir, "risk-policy.json"), "utf-8");
-      if (/docsDriftRules|watchPaths/i.test(rpContent)) {
-        driftEnforcement = true;
-      }
-    } catch { /* skip */ }
-  }
-  // Docs-drift enforcement script
-  const docsDriftScripts = existsSync(join(targetDir, "scripts"))
-    ? findFiles(join(targetDir, "scripts"), /drift|docs-drift/i, 1)
-    : [];
-  if (docsDriftScripts.length > 0) driftEnforcement = true;
+  const qualityGradesFound = hasQualityGrades(ctx);
+  const driftEnforcement = hasDriftEnforcement(ctx);
 
   if (qualityGradesFound || driftEnforcement) {
     result.scores.garbage_collection.score++;
@@ -934,18 +1193,34 @@ function runAudit(targetPath: string): AuditResult {
       result.scores.garbage_collection.findings.push("Drift enforcement detected");
     }
   }
+}
 
-  // ── Totals ────────────────────────────────────────────────────────────
+function resolveMaturityLevel(totalScore: number): string {
+  if (totalScore <= 4) return "L0: Manual";
+  if (totalScore <= 8) return "L1: Assisted";
+  if (totalScore <= 13) return "L2: Steered";
+  if (totalScore <= 16) return "L3: Autonomous";
+  return "L4: Self-Correcting";
+}
 
-  result.total_score = Object.values(result.scores).reduce((sum, s) => sum + s.score, 0);
+function runAudit(targetPath: string): AuditResult {
+  const targetDir = resolve(targetPath);
+  if (!existsSync(targetDir)) {
+    throw new Error(`Directory does not exist: ${targetDir}`);
+  }
 
-  if (result.total_score <= 4) result.maturity_level = "L0: Manual";
-  else if (result.total_score <= 8) result.maturity_level = "L1: Assisted";
-  else if (result.total_score <= 13) result.maturity_level = "L2: Steered";
-  else if (result.total_score <= 16) result.maturity_level = "L3: Autonomous";
-  else result.maturity_level = "L4: Self-Correcting";
+  const result = createAuditResult(basename(targetDir));
+  const context = buildAuditRuntimeContext(targetDir);
 
-  // Fill remaining recommendations
+  scoreRepositoryKnowledge(result, context);
+  scoreArchitectureEnforcement(result, context);
+  scoreAgentLegibility(result, context);
+  scoreGoldenPrinciples(result, context);
+  scoreAgentWorkflow(result, context);
+  scoreGarbageCollection(result, context);
+
+  result.total_score = Object.values(result.scores).reduce((sum, score) => sum + score.score, 0);
+  result.maturity_level = resolveMaturityLevel(result.total_score);
   if (result.recommendations.length === 0) {
     result.recommendations.push("Project is well-structured. Consider evolving to next maturity level.");
   }
@@ -964,50 +1239,41 @@ function audit(targetPath: string): void {
   }
 }
 
-function doctor(targetPath: string): void {
-  const targetDir = resolve(targetPath);
-  const projectName = basename(targetDir);
-
-  if (!existsSync(targetDir)) {
-    console.error(JSON.stringify({ error: `Directory does not exist: ${targetDir}` }));
-    process.exit(1);
-  }
-
-  const checks: Array<{ check: string; status: "pass" | "fail" | "warn"; fix: string }> = [];
-
-  // AGENTS.md
+function collectDoctorAgentsCheck(targetDir: string): DoctorCheck[] {
   const agentsMd = join(targetDir, "AGENTS.md");
-  if (existsSync(agentsMd)) {
-    const lines = readFileSync(agentsMd, "utf-8").split("\n").length;
-    if (lines <= 150) {
-      checks.push({ check: "AGENTS.md exists and concise", status: "pass", fix: "" });
-    } else {
-      checks.push({
-        check: "AGENTS.md too long",
-        status: "warn",
-        fix: `Trim AGENTS.md from ${lines} to ~100 lines. Move details to docs/.`,
-      });
-    }
-  } else {
-    checks.push({
-      check: "AGENTS.md missing",
-      status: "fail",
-      fix: "Run 'reins init .' to create AGENTS.md",
-    });
+  if (!existsSync(agentsMd)) {
+    return [{ check: "AGENTS.md missing", status: "fail", fix: "Run 'reins init .' to create AGENTS.md" }];
   }
 
-  // ARCHITECTURE.md
+  const lines = readFileSync(agentsMd, "utf-8").split("\n").length;
+  if (lines <= 150) {
+    return [{ check: "AGENTS.md exists and concise", status: "pass", fix: "" }];
+  }
+
+  return [
+    {
+      check: "AGENTS.md too long",
+      status: "warn",
+      fix: `Trim AGENTS.md from ${lines} to ~100 lines. Move details to docs/.`,
+    },
+  ];
+}
+
+function collectDoctorArchitectureCheck(targetDir: string): DoctorCheck[] {
   if (existsSync(join(targetDir, "ARCHITECTURE.md"))) {
-    checks.push({ check: "ARCHITECTURE.md exists", status: "pass", fix: "" });
-  } else {
-    checks.push({
+    return [{ check: "ARCHITECTURE.md exists", status: "pass", fix: "" }];
+  }
+
+  return [
+    {
       check: "ARCHITECTURE.md missing",
       status: "fail",
       fix: "Run 'reins init .' to create ARCHITECTURE.md",
-    });
-  }
+    },
+  ];
+}
 
-  // docs/ structure
+function collectDoctorRequiredDocChecks(targetDir: string): DoctorCheck[] {
   const requiredDocs = [
     "docs/design-docs/index.md",
     "docs/design-docs/core-beliefs.md",
@@ -1016,119 +1282,155 @@ function doctor(targetPath: string): void {
     "docs/golden-principles.md",
   ];
 
-  for (const doc of requiredDocs) {
+  return requiredDocs.map((doc): DoctorCheck => {
     if (existsSync(join(targetDir, doc))) {
-      checks.push({ check: `${doc} exists`, status: "pass", fix: "" });
-    } else {
-      checks.push({
-        check: `${doc} missing`,
-        status: "fail",
-        fix: `Run 'reins init .' to create missing files`,
-      });
+      return { check: `${doc} exists`, status: "pass", fix: "" };
     }
+
+    return {
+      check: `${doc} missing`,
+      status: "fail",
+      fix: "Run 'reins init .' to create missing files",
+    };
+  });
+}
+
+function collectDoctorLinterCheck(targetDir: string): DoctorCheck[] {
+  const linterFiles = [".eslintrc.json", ".eslintrc.js", "eslint.config.js", "eslint.config.mjs", "biome.json"];
+  if (linterFiles.some((file) => existsSync(join(targetDir, file)))) {
+    return [{ check: "Linter configured", status: "pass", fix: "" }];
   }
 
-  // Linter
-  const linterFiles = [".eslintrc.json", ".eslintrc.js", "eslint.config.js", "eslint.config.mjs", "biome.json"];
-  if (linterFiles.some((f) => existsSync(join(targetDir, f)))) {
-    checks.push({ check: "Linter configured", status: "pass", fix: "" });
-  } else {
-    checks.push({
+  return [
+    {
       check: "No linter configured",
       status: "warn",
       fix: "Add eslint or biome config to enforce architectural constraints",
-    });
-  }
+    },
+  ];
+}
 
-  // CI
+function collectDoctorCiChecks(targetDir: string): DoctorCheck[] {
   const doctorCiPaths = [".github/workflows", ".gitlab-ci.yml", "Jenkinsfile"];
-  if (doctorCiPaths.some((p) => existsSync(join(targetDir, p)))) {
-    checks.push({ check: "CI pipeline exists", status: "pass", fix: "" });
+  const hasCiPipeline = doctorCiPaths.some((path) => existsSync(join(targetDir, path)));
+  if (!hasCiPipeline) {
+    return [
+      {
+        check: "No CI pipeline",
+        status: "warn",
+        fix: "Add CI pipeline to enforce golden principles mechanically",
+      },
+    ];
+  }
 
-    // CI enforcement quality
-    const doctorWorkflowDir = join(targetDir, ".github", "workflows");
-    if (existsSync(doctorWorkflowDir)) {
-      const enfSteps = scanWorkflowsForEnforcement(doctorWorkflowDir);
-      if (enfSteps.length >= 2) {
-        checks.push({ check: `CI enforces ${enfSteps.length} quality gates`, status: "pass", fix: "" });
-      } else {
-        checks.push({
-          check: "CI lacks enforcement steps",
-          status: "warn",
-          fix: "Add lint, test, and typecheck steps to CI workflows",
-        });
-      }
-    }
+  const checks: DoctorCheck[] = [{ check: "CI pipeline exists", status: "pass", fix: "" }];
+  const doctorWorkflowDir = join(targetDir, ".github", "workflows");
+  if (!existsSync(doctorWorkflowDir)) return checks;
+
+  const enforcementSteps = scanWorkflowsForEnforcement(doctorWorkflowDir);
+  if (enforcementSteps.length >= 2) {
+    checks.push({ check: `CI enforces ${enforcementSteps.length} quality gates`, status: "pass", fix: "" });
   } else {
     checks.push({
-      check: "No CI pipeline",
+      check: "CI lacks enforcement steps",
       status: "warn",
-      fix: "Add CI pipeline to enforce golden principles mechanically",
+      fix: "Add lint, test, and typecheck steps to CI workflows",
     });
   }
 
-  // risk-policy.json
+  return checks;
+}
+
+function collectDoctorRiskPolicyCheck(targetDir: string): DoctorCheck[] {
   if (existsSync(join(targetDir, "risk-policy.json"))) {
-    checks.push({ check: "risk-policy.json exists", status: "pass", fix: "" });
-  } else {
-    checks.push({
+    return [{ check: "risk-policy.json exists", status: "pass", fix: "" }];
+  }
+
+  return [
+    {
       check: "No risk-policy.json",
       status: "warn",
       fix: "Create risk-policy.json with risk tiers and docs-drift rules",
-    });
+    },
+  ];
+}
+
+function collectDoctorVerificationChecks(targetDir: string): DoctorCheck[] {
+  const verifiedDocs = readVerifiedDocs(targetDir);
+  if (verifiedDocs.length > 0) {
+    return [{ check: `Verification headers in ${verifiedDocs.length} doc(s)`, status: "pass", fix: "" }];
   }
 
-  // Verification headers in docs
-  const doctorDocFiles = findFiles(targetDir, /\.(md|markdown)$/, 3);
-  const doctorVerifiedDocs = doctorDocFiles.filter(f => {
-    try { return readFileSync(f, 'utf-8').includes('<!-- Verified:'); } catch { return false; }
-  });
-  if (doctorVerifiedDocs.length > 0) {
-    checks.push({ check: `Verification headers in ${doctorVerifiedDocs.length} doc(s)`, status: "pass", fix: "" });
-  } else {
-    checks.push({
+  return [
+    {
       check: "No verification headers in docs",
       status: "warn",
       fix: "Add <!-- Verified: YYYY-MM-DD --> headers to key docs for freshness tracking",
-    });
+    },
+  ];
+}
+
+function collectDoctorHierarchicalAgentsCheck(targetDir: string): DoctorCheck[] {
+  const agentsMdFiles = findFiles(targetDir, /^AGENTS\.md$/, 3);
+  if (agentsMdFiles.length >= 2) {
+    return [{ check: `Hierarchical AGENTS.md (${agentsMdFiles.length} files)`, status: "pass", fix: "" }];
   }
 
-  // Per-package AGENTS.md
-  const doctorAgentsMdFiles = findFiles(targetDir, /^AGENTS\.md$/, 3);
-  if (doctorAgentsMdFiles.length >= 2) {
-    checks.push({ check: `Hierarchical AGENTS.md (${doctorAgentsMdFiles.length} files)`, status: "pass", fix: "" });
+  return [];
+}
+
+function collectDoctorStructuralLintChecks(targetDir: string): DoctorCheck[] {
+  if (!existsSync(join(targetDir, "scripts"))) return [];
+
+  const structuralScripts = findFiles(join(targetDir, "scripts"), /lint|structure/i, 1);
+  if (structuralScripts.length > 0) {
+    return [{ check: "Structural lint scripts found", status: "pass", fix: "" }];
   }
 
-  // Structural lint scripts
-  if (existsSync(join(targetDir, "scripts"))) {
-    const structScripts = findFiles(join(targetDir, "scripts"), /lint|structure/i, 1);
-    if (structScripts.length > 0) {
-      checks.push({ check: "Structural lint scripts found", status: "pass", fix: "" });
-    } else {
-      checks.push({
-        check: "No structural lint scripts",
-        status: "warn",
-        fix: "Add scripts/structural-lint.ts to enforce layer and dependency rules",
-      });
-    }
+  return [
+    {
+      check: "No structural lint scripts",
+      status: "warn",
+      fix: "Add scripts/structural-lint.ts to enforce layer and dependency rules",
+    },
+  ];
+}
+
+function doctor(targetPath: string): void {
+  const targetDir = resolve(targetPath);
+  if (!existsSync(targetDir)) {
+    console.error(JSON.stringify({ error: `Directory does not exist: ${targetDir}` }));
+    process.exit(1);
   }
 
-  const passed = checks.filter((c) => c.status === "pass").length;
-  const failed = checks.filter((c) => c.status === "fail").length;
-  const warned = checks.filter((c) => c.status === "warn").length;
+  const checks: DoctorCheck[] = [
+    ...collectDoctorAgentsCheck(targetDir),
+    ...collectDoctorArchitectureCheck(targetDir),
+    ...collectDoctorRequiredDocChecks(targetDir),
+    ...collectDoctorLinterCheck(targetDir),
+    ...collectDoctorCiChecks(targetDir),
+    ...collectDoctorRiskPolicyCheck(targetDir),
+    ...collectDoctorVerificationChecks(targetDir),
+    ...collectDoctorHierarchicalAgentsCheck(targetDir),
+    ...collectDoctorStructuralLintChecks(targetDir),
+  ];
+
+  const passed = checks.filter((check) => check.status === "pass").length;
+  const failed = checks.filter((check) => check.status === "fail").length;
+  const warnings = checks.filter((check) => check.status === "warn").length;
 
   console.log(
     JSON.stringify(
       {
         command: "doctor",
-        project: projectName,
+        project: basename(targetDir),
         target: targetDir,
-        summary: { passed, failed, warnings: warned, total: checks.length },
+        summary: { passed, failed, warnings, total: checks.length },
         checks,
       },
       null,
-      2
-    )
+      2,
+    ),
   );
 }
 
@@ -1150,55 +1452,156 @@ interface EvolutionPath {
 }
 
 const EVOLUTION_PATHS: Record<string, EvolutionPath> = {
-  "L0": {
+  L0: {
     from: "L0: Manual",
     to: "L1: Assisted",
     goal: "Get agents into the development loop",
     steps: [
-      { step: 1, action: "Create AGENTS.md", description: "Concise map (~100 lines) pointing agents to deeper docs. Run 'reins init .' to generate.", automated: true },
-      { step: 2, action: "Create docs/ structure", description: "Design docs, product specs, references, execution plans — all versioned in-repo.", automated: true },
-      { step: 3, action: "Document architecture", description: "ARCHITECTURE.md with domain map, layer ordering, and dependency direction rules.", automated: true },
-      { step: 4, action: "Set up agent-friendly CI", description: "Fast feedback, clear error messages, deterministic output. Agents need to parse CI results.", automated: false },
-      { step: 5, action: "First agent PR", description: "Have an agent open its first PR from a prompt. Validates the full loop works end-to-end.", automated: false },
+      {
+        step: 1,
+        action: "Create AGENTS.md",
+        description: "Concise map (~100 lines) pointing agents to deeper docs. Run 'reins init .' to generate.",
+        automated: true,
+      },
+      {
+        step: 2,
+        action: "Create docs/ structure",
+        description: "Design docs, product specs, references, execution plans — all versioned in-repo.",
+        automated: true,
+      },
+      {
+        step: 3,
+        action: "Document architecture",
+        description: "ARCHITECTURE.md with domain map, layer ordering, and dependency direction rules.",
+        automated: true,
+      },
+      {
+        step: 4,
+        action: "Set up agent-friendly CI",
+        description: "Fast feedback, clear error messages, deterministic output. Agents need to parse CI results.",
+        automated: false,
+      },
+      {
+        step: 5,
+        action: "First agent PR",
+        description: "Have an agent open its first PR from a prompt. Validates the full loop works end-to-end.",
+        automated: false,
+      },
     ],
     success_criteria: "Agent can read AGENTS.md, follow pointers, and open a useful PR.",
   },
-  "L1": {
+  L1: {
     from: "L1: Assisted",
     to: "L2: Steered",
     goal: "Shift from human-writes-code to human-steers-agent",
     steps: [
-      { step: 1, action: "Write golden principles", description: "Mechanical taste rules in docs/golden-principles.md, enforced in CI — not just documented.", automated: true },
-      { step: 2, action: "Add structural linters", description: "Custom lint rules for dependency direction, layer violations, naming conventions.", automated: false },
-      { step: 3, action: "Enable worktree isolation", description: "App bootable per git worktree — one instance per in-flight change.", automated: false },
-      { step: 4, action: "Create exec-plan templates", description: "Versioned execution plans in docs/exec-plans/ — active, completed, and tech debt tracked.", automated: true },
-      { step: 5, action: "Adopt prompt-first workflow", description: "Describe tasks in natural language. Agents write all code, tests, and docs.", automated: false },
+      {
+        step: 1,
+        action: "Write golden principles",
+        description: "Mechanical taste rules in docs/golden-principles.md, enforced in CI — not just documented.",
+        automated: true,
+      },
+      {
+        step: 2,
+        action: "Add structural linters",
+        description: "Custom lint rules for dependency direction, layer violations, naming conventions.",
+        automated: false,
+      },
+      {
+        step: 3,
+        action: "Enable worktree isolation",
+        description: "App bootable per git worktree — one instance per in-flight change.",
+        automated: false,
+      },
+      {
+        step: 4,
+        action: "Create exec-plan templates",
+        description: "Versioned execution plans in docs/exec-plans/ — active, completed, and tech debt tracked.",
+        automated: true,
+      },
+      {
+        step: 5,
+        action: "Adopt prompt-first workflow",
+        description: "Describe tasks in natural language. Agents write all code, tests, and docs.",
+        automated: false,
+      },
     ],
     success_criteria: "Most new code is written by agents, not humans.",
   },
-  "L2": {
+  L2: {
     from: "L2: Steered",
     to: "L3: Autonomous",
     goal: "Agent handles full PR lifecycle end-to-end",
     steps: [
-      { step: 1, action: "Establish risk tiers and policy-as-code", description: "Create risk-policy.json defining risk tiers, docs-drift rules, and watch paths for enforcement.", automated: false },
-      { step: 2, action: "Enforce golden principles mechanically", description: "Add structural lint scripts and CI gates that enforce golden principles — not just document them.", automated: false },
-      { step: 3, action: "Enable self-validation", description: "Agent drives the app, takes screenshots, checks behavior against expectations.", automated: false },
-      { step: 4, action: "Add doc-gardening automation", description: "Add verification headers (<!-- Verified: -->), freshness scripts, and recurring doc review.", automated: false },
-      { step: 5, action: "Build escalation paths", description: "Clear criteria for when to involve humans vs. when agents can proceed autonomously.", automated: false },
+      {
+        step: 1,
+        action: "Establish risk tiers and policy-as-code",
+        description: "Create risk-policy.json defining risk tiers, docs-drift rules, and watch paths for enforcement.",
+        automated: false,
+      },
+      {
+        step: 2,
+        action: "Enforce golden principles mechanically",
+        description:
+          "Add structural lint scripts and CI gates that enforce golden principles — not just document them.",
+        automated: false,
+      },
+      {
+        step: 3,
+        action: "Enable self-validation",
+        description: "Agent drives the app, takes screenshots, checks behavior against expectations.",
+        automated: false,
+      },
+      {
+        step: 4,
+        action: "Add doc-gardening automation",
+        description: "Add verification headers (<!-- Verified: -->), freshness scripts, and recurring doc review.",
+        automated: false,
+      },
+      {
+        step: 5,
+        action: "Build escalation paths",
+        description: "Clear criteria for when to involve humans vs. when agents can proceed autonomously.",
+        automated: false,
+      },
     ],
     success_criteria: "Agent can end-to-end ship a feature from prompt to merge.",
   },
-  "L3": {
+  L3: {
     from: "L3: Autonomous",
     to: "L4: Self-Correcting",
     goal: "System maintains and improves itself without human intervention",
     steps: [
-      { step: 1, action: "Implement active doc-gardening with drift detection", description: "Automated drift detection between docs and code, with auto-repair capabilities.", automated: false },
-      { step: 2, action: "Add quality grades", description: "Per-domain, per-layer scoring tracked in ARCHITECTURE.md.", automated: false },
-      { step: 3, action: "Automate enforcement ratio tracking", description: "Track >80% of golden principles enforced in CI — measure and improve coverage.", automated: false },
-      { step: 4, action: "Track tech debt continuously", description: "In-repo tracker with recurring review — debt paid down in small increments.", automated: true },
-      { step: 5, action: "Establish docs-drift rules", description: "Link code changes to required doc updates via risk-policy.json watchPaths and docsDriftRules.", automated: false },
+      {
+        step: 1,
+        action: "Implement active doc-gardening with drift detection",
+        description: "Automated drift detection between docs and code, with auto-repair capabilities.",
+        automated: false,
+      },
+      {
+        step: 2,
+        action: "Add quality grades",
+        description: "Per-domain, per-layer scoring tracked in ARCHITECTURE.md.",
+        automated: false,
+      },
+      {
+        step: 3,
+        action: "Automate enforcement ratio tracking",
+        description: "Track >80% of golden principles enforced in CI — measure and improve coverage.",
+        automated: false,
+      },
+      {
+        step: 4,
+        action: "Track tech debt continuously",
+        description: "In-repo tracker with recurring review — debt paid down in small increments.",
+        automated: true,
+      },
+      {
+        step: 5,
+        action: "Establish docs-drift rules",
+        description: "Link code changes to required doc updates via risk-policy.json watchPaths and docsDriftRules.",
+        automated: false,
+      },
     ],
     success_criteria: "Codebase improves in quality without human intervention.",
   },
@@ -1233,8 +1636,8 @@ function evolve(targetPath: string, runInit: boolean): void {
           message: "Already at L4: Self-Correcting. Focus on maintaining quality grades and continuous improvement.",
         },
         null,
-        2
-      )
+        2,
+      ),
     );
     return;
   }
@@ -1276,8 +1679,8 @@ function evolve(targetPath: string, runInit: boolean): void {
         recommendations: auditResult.recommendations,
       },
       null,
-      2
-    )
+      2,
+    ),
   );
 }
 

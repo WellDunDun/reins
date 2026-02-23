@@ -1,49 +1,67 @@
 ---
-name: HarnessEngineering
-description: Agent-first development methodology. USE WHEN harness engineering, agent-first, scaffold project, audit codebase, zero manual code, agents.md, repository knowledge, agent legibility.
+name: Reins
+description: Reins CLI skill for scaffold/audit/doctor/evolve workflows. Use when setting up or evaluating harness-engineering repo readiness and maturity with Reins commands.
 ---
 
-# HarnessEngineering
+# Reins
 
-Apply the Harness Engineering methodology — building and shipping software with zero manually-written code, where humans steer and agents execute.
+Use the Reins CLI to operationalize harness engineering in any repository.
 
-## Customization Check
+## Use When
 
-Before executing any workflow, check for user customizations:
-- `~/.claude/skills/CORE/USER/SKILLCUSTOMIZATIONS/HarnessEngineering/`
-- Load PREFERENCES.md if present
+Use this skill when the user asks to:
+- Scaffold repository readiness artifacts (`AGENTS.md`, `ARCHITECTURE.md`, `docs/`, `risk-policy.json`)
+- Audit or score agent-readiness/maturity (0-18, maturity levels, weakest dimensions)
+- Diagnose readiness gaps with `doctor`
+- Evolve the repository to the next Reins maturity level
+- Improve docs-drift/policy-as-code enforcement tied to Reins outputs
 
-## Voice Notification
+## Don't Use When
 
-```bash
-curl -s -X POST http://localhost:8888/notify \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Running the WORKFLOWNAME workflow in the HarnessEngineering skill to ACTION"}' \
-  > /dev/null 2>&1 &
-```
+Do not use this skill for:
+- Generic code implementation/debugging unrelated to Reins workflows
+- General-purpose lint/test/security checks that do not request Reins scoring or scaffolding
+- Product/domain feature design that does not involve harness-engineering structure
+- Questions about installing random third-party skills (use skill discovery/installer flows instead)
 
-## Core Principles
+## Command Execution Policy
 
-1. **Humans steer, agents execute** — No manually-written code. Every line by agents.
-2. **Repository is the system of record** — All knowledge versioned in-repo, not in Slack/Docs.
-3. **Progressive disclosure** — Short AGENTS.md as map; deep docs elsewhere.
-4. **Agent legibility over human legibility** — Optimize for agent reasoning first.
-5. **Enforce invariants, not implementations** — Linters and structural tests, not code review.
-6. **Garbage collection** — Recurring agents clean drift; pay down debt continuously.
-7. **Corrections are cheap, waiting is expensive** — Minimal blocking merge gates.
+Use this order when running commands:
 
-For the full methodology reference, run: `SkillSearch('harness methodology')`
+1. If working inside the Reins repository itself:
+`cd cli/reins && bun src/index.ts <command> ../..`
+2. Otherwise (or if local source is unavailable):
+`npx reins-cli <command> <target-path>`
+
+All Reins commands output deterministic JSON. Prefer parsing JSON output over text matching.
+
+## Core Reins Principles
+
+1. **Repository is the system of record** — Knowledge stays in versioned files.
+2. **Humans steer, agents execute** — Prompt-first workflows over manual edits where possible.
+3. **Mechanical enforcement over intent-only docs** — CI and policy-as-code back every rule.
+4. **Progressive disclosure** — AGENTS.md is the map, deep docs hold details.
+5. **Continuous cleanup** — Track debt, docs drift, and stale patterns as first-class work.
 
 ## Workflow Routing
 
 | Trigger | Workflow | File |
 |---------|----------|------|
-| scaffold, init, setup, new project, bootstrap | Scaffold | Workflows/Scaffold.md |
-| audit, score, assess, check, evaluate | Audit | Workflows/Audit.md |
-| evolve, improve, upgrade, mature, level up | Evolve | Workflows/Evolve.md |
+| scaffold, init, setup, bootstrap | Scaffold | Workflows/Scaffold.md |
+| audit, score, assess, doctor, health check, readiness diagnosis | Audit | Workflows/Audit.md |
+| evolve, improve, mature, level up | Evolve | Workflows/Evolve.md |
 
 ## Examples
 
-- "Scaffold a harness engineering project in this repo"
-- "Audit this codebase against harness engineering principles"
-- "Evolve this project to the next harness maturity level"
+- "Scaffold this repo for Reins"
+- "Audit this project with Reins and summarize the weakest dimensions"
+- "Evolve this repo to the next Reins maturity level"
+
+## Negative Examples
+
+These should not trigger Reins:
+- "Fix this React hydration bug"
+- "Add OAuth login to the API"
+- "Run normal project lint and unit tests"
+
+Route to general coding workflows unless the user explicitly asks for Reins scaffolding, audit, doctor, or evolve operations.

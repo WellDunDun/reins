@@ -1,6 +1,14 @@
-# Scaffold Workflow
+# Reins Scaffold Workflow
 
 Set up a new or existing repository with the full harness engineering structure.
+
+## Default Command
+
+Use Reins before manual scaffolding:
+- Local source: `cd cli/reins && bun src/index.ts init <path>`
+- Package mode: `npx reins-cli init <path>`
+
+Only fall back to manual file-by-file scaffolding if the command cannot run.
 
 ## Steps
 
@@ -73,6 +81,8 @@ docs/
   references/         # External LLM-friendly reference docs
   golden-principles.md  # Mechanical taste rules
 ```
+
+Create `risk-policy.json` at repository root with risk tiers, watch paths, and docs drift rules.
 
 ### 4. Generate ARCHITECTURE.md
 

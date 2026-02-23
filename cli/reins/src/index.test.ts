@@ -1,6 +1,6 @@
-import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from "fs";
-import { join } from "path";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { $ } from "bun";
 
 const CLI = join(import.meta.dir, "index.ts");
@@ -12,21 +12,19 @@ function tmpDir(name: string): string {
   return dir;
 }
 
-function runCli(args: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  return new Promise(async (resolve) => {
-    try {
-      const proc = Bun.spawn(["bun", CLI, ...args.split(" ")], {
-        stdout: "pipe",
-        stderr: "pipe",
-      });
-      const stdout = await new Response(proc.stdout).text();
-      const stderr = await new Response(proc.stderr).text();
-      const exitCode = await proc.exited;
-      resolve({ stdout, stderr, exitCode });
-    } catch {
-      resolve({ stdout: "", stderr: "spawn failed", exitCode: 1 });
-    }
-  });
+async function runCli(args: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  try {
+    const proc = Bun.spawn(["bun", CLI, ...args.split(" ")], {
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const stdout = await new Response(proc.stdout).text();
+    const stderr = await new Response(proc.stderr).text();
+    const exitCode = await proc.exited;
+    return { stdout, stderr, exitCode };
+  } catch {
+    return { stdout: "", stderr: "spawn failed", exitCode: 1 };
+  }
 }
 
 beforeEach(() => {
@@ -56,12 +54,14 @@ describe("reins init", () => {
     expect(result.created).toContain("docs/design-docs/core-beliefs.md");
     expect(result.created).toContain("docs/product-specs/index.md");
     expect(result.created).toContain("docs/exec-plans/tech-debt-tracker.md");
+    expect(result.created).toContain("risk-policy.json");
 
     // Verify files exist on disk
     expect(existsSync(join(dir, "AGENTS.md"))).toBe(true);
     expect(existsSync(join(dir, "ARCHITECTURE.md"))).toBe(true);
     expect(existsSync(join(dir, "docs", "golden-principles.md"))).toBe(true);
     expect(existsSync(join(dir, "docs", "design-docs", "index.md"))).toBe(true);
+    expect(existsSync(join(dir, "risk-policy.json"))).toBe(true);
     expect(existsSync(join(dir, "docs", "exec-plans", "active"))).toBe(true);
     expect(existsSync(join(dir, "docs", "exec-plans", "completed"))).toBe(true);
     expect(existsSync(join(dir, "docs", "references"))).toBe(true);
@@ -161,7 +161,7 @@ describe("reins audit", () => {
     // AGENTS.md exists but too long — should NOT get the point
     expect(result.scores.repository_knowledge.score).toBe(0);
     expect(result.scores.repository_knowledge.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("too long")])
+      expect.arrayContaining([expect.stringContaining("too long")]),
     );
   });
 
@@ -173,7 +173,7 @@ describe("reins audit", () => {
     const result = JSON.parse(stdout);
 
     expect(result.scores.architecture_enforcement.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("Linter configuration found")])
+      expect.arrayContaining([expect.stringContaining("Linter configuration found")]),
     );
   });
 
@@ -181,7 +181,7 @@ describe("reins audit", () => {
     const dir = tmpDir("audit-deps");
     writeFileSync(
       join(dir, "package.json"),
-      JSON.stringify({ scripts: { dev: "next dev" }, dependencies: { react: "^18" } })
+      JSON.stringify({ scripts: { dev: "next dev" }, dependencies: { react: "^18" } }),
     );
 
     const { stdout } = await runCli(`audit ${dir}`);
@@ -239,6 +239,8 @@ describe("reins doctor", () => {
     expect(result.summary.failed).toBe(0);
     // Linter and CI will be warnings (not created by init)
     expect(result.summary.warnings).toBeGreaterThanOrEqual(0);
+    const riskCheck = result.checks.find((c: { check: string }) => c.check.includes("risk-policy"));
+    expect(riskCheck?.status).toBe("pass");
   });
 
   test("provides actionable fix instructions", async () => {
@@ -311,7 +313,7 @@ describe("D1: Repository Knowledge — new signals", () => {
     const result = JSON.parse(stdout);
 
     expect(result.scores.repository_knowledge.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("Hierarchical AGENTS.md detected (2 files)")])
+      expect.arrayContaining([expect.stringContaining("Hierarchical AGENTS.md detected (2 files)")]),
     );
   });
 
@@ -324,7 +326,7 @@ describe("D1: Repository Knowledge — new signals", () => {
     const result = JSON.parse(stdout);
 
     expect(result.scores.repository_knowledge.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("Verification headers found in 1 doc(s)")])
+      expect.arrayContaining([expect.stringContaining("Verification headers found in 1 doc(s)")]),
     );
   });
 
@@ -333,14 +335,14 @@ describe("D1: Repository Knowledge — new signals", () => {
     mkdirSync(join(dir, "docs", "design-docs"), { recursive: true });
     writeFileSync(
       join(dir, "docs", "design-docs", "index.md"),
-      `# Design Docs Index\n| Doc | Status | Verified | Owner |\n|-----|--------|----------|-------|\n| auth.md | Current | 2026-01 | Team |\n| api.md | Current | 2026-01 | Team |\n| db.md | Draft | 2026-01 | Team |\n`
+      "# Design Docs Index\n| Doc | Status | Verified | Owner |\n|-----|--------|----------|-------|\n| auth.md | Current | 2026-01 | Team |\n| api.md | Current | 2026-01 | Team |\n| db.md | Draft | 2026-01 | Team |\n",
     );
 
     const { stdout } = await runCli(`audit ${dir}`);
     const result = JSON.parse(stdout);
 
     expect(result.scores.repository_knowledge.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("3 design decisions documented")])
+      expect.arrayContaining([expect.stringContaining("3 design decisions documented")]),
     );
   });
 
@@ -349,14 +351,14 @@ describe("D1: Repository Knowledge — new signals", () => {
     mkdirSync(join(dir, "docs", "design-docs"), { recursive: true });
     writeFileSync(
       join(dir, "docs", "design-docs", "index.md"),
-      `# Design Docs\n| Doc | Status |\n|-----|--------|\n| one.md | Current |\n`
+      "# Design Docs\n| Doc | Status |\n|-----|--------|\n| one.md | Current |\n",
     );
 
     const { stdout } = await runCli(`audit ${dir}`);
     const result = JSON.parse(stdout);
 
-    const decisionFindings = result.scores.repository_knowledge.findings.filter(
-      (f: string) => f.includes("design decisions documented")
+    const decisionFindings = result.scores.repository_knowledge.findings.filter((f: string) =>
+      f.includes("design decisions documented"),
     );
     expect(decisionFindings.length).toBe(0);
   });
@@ -372,7 +374,7 @@ describe("D2: Architecture Enforcement — new scoring", () => {
 
     expect(result.scores.architecture_enforcement.score).toBe(0);
     expect(result.scores.architecture_enforcement.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("lacks dependency direction rules")])
+      expect.arrayContaining([expect.stringContaining("lacks dependency direction rules")]),
     );
   });
 
@@ -385,22 +387,19 @@ describe("D2: Architecture Enforcement — new scoring", () => {
 
     expect(result.scores.architecture_enforcement.score).toBe(1);
     expect(result.scores.architecture_enforcement.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("dependency direction rules")])
+      expect.arrayContaining([expect.stringContaining("dependency direction rules")]),
     );
   });
 
   test("linter with architectural keywords gets deeper finding", async () => {
     const dir = tmpDir("d2-linter-deep");
-    writeFileSync(
-      join(dir, "eslint.config.js"),
-      `export default { rules: { "no-restricted-imports": ["error"] } };`
-    );
+    writeFileSync(join(dir, "eslint.config.js"), `export default { rules: { "no-restricted-imports": ["error"] } };`);
 
     const { stdout } = await runCli(`audit ${dir}`);
     const result = JSON.parse(stdout);
 
     expect(result.scores.architecture_enforcement.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("architectural enforcement")])
+      expect.arrayContaining([expect.stringContaining("architectural enforcement")]),
     );
   });
 
@@ -414,7 +413,7 @@ describe("D2: Architecture Enforcement — new scoring", () => {
     const result = JSON.parse(stdout);
 
     expect(result.scores.architecture_enforcement.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("architectural enforcement")])
+      expect.arrayContaining([expect.stringContaining("architectural enforcement")]),
     );
   });
 
@@ -422,13 +421,16 @@ describe("D2: Architecture Enforcement — new scoring", () => {
     const dir = tmpDir("d2-enforcement");
     writeFileSync(join(dir, "risk-policy.json"), '{"tiers": ["low","medium","high"]}');
     mkdirSync(join(dir, ".github", "workflows"), { recursive: true });
-    writeFileSync(join(dir, ".github", "workflows", "ci.yml"), "name: CI\njobs:\n  test:\n    run: bun test\n  lint:\n    run: bun lint\n");
+    writeFileSync(
+      join(dir, ".github", "workflows", "ci.yml"),
+      "name: CI\njobs:\n  test:\n    run: bun test\n  lint:\n    run: bun lint\n",
+    );
 
     const { stdout } = await runCli(`audit ${dir}`);
     const result = JSON.parse(stdout);
 
     expect(result.scores.architecture_enforcement.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("Enforcement evidence detected")])
+      expect.arrayContaining([expect.stringContaining("Enforcement evidence detected")]),
     );
   });
 
@@ -440,7 +442,7 @@ describe("D2: Architecture Enforcement — new scoring", () => {
     const result = JSON.parse(stdout);
 
     expect(result.scores.architecture_enforcement.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("Partial enforcement evidence")])
+      expect.arrayContaining([expect.stringContaining("Partial enforcement evidence")]),
     );
   });
 });
@@ -448,21 +450,18 @@ describe("D2: Architecture Enforcement — new scoring", () => {
 describe("D3: Agent Legibility — monorepo and observability", () => {
   test("detects monorepo workspace bootable app", async () => {
     const dir = tmpDir("d3-monorepo");
-    writeFileSync(
-      join(dir, "package.json"),
-      JSON.stringify({ workspaces: ["packages/*"] })
-    );
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ workspaces: ["packages/*"] }));
     mkdirSync(join(dir, "packages", "web"), { recursive: true });
     writeFileSync(
       join(dir, "packages", "web", "package.json"),
-      JSON.stringify({ scripts: { dev: "next dev" }, dependencies: { react: "^18" } })
+      JSON.stringify({ scripts: { dev: "next dev" }, dependencies: { react: "^18" } }),
     );
 
     const { stdout } = await runCli(`audit ${dir}`);
     const result = JSON.parse(stdout);
 
     expect(result.scores.agent_legibility.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("Monorepo detected")])
+      expect.arrayContaining([expect.stringContaining("Monorepo detected")]),
     );
     expect(result.scores.agent_legibility.score).toBeGreaterThanOrEqual(1);
   });
@@ -475,22 +474,19 @@ describe("D3: Agent Legibility — monorepo and observability", () => {
     const result = JSON.parse(stdout);
 
     expect(result.scores.agent_legibility.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("Observability configuration found")])
+      expect.arrayContaining([expect.stringContaining("Observability configuration found")]),
     );
   });
 
   test("detects sentry dependency as modern observability", async () => {
     const dir = tmpDir("d3-sentry");
-    writeFileSync(
-      join(dir, "package.json"),
-      JSON.stringify({ dependencies: { "@sentry/nextjs": "^7" } })
-    );
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ dependencies: { "@sentry/nextjs": "^7" } }));
 
     const { stdout } = await runCli(`audit ${dir}`);
     const result = JSON.parse(stdout);
 
     expect(result.scores.agent_legibility.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("Observability configuration found")])
+      expect.arrayContaining([expect.stringContaining("Observability configuration found")]),
     );
   });
 
@@ -498,17 +494,17 @@ describe("D3: Agent Legibility — monorepo and observability", () => {
     const dir = tmpDir("d3-mono-deps");
     writeFileSync(
       join(dir, "package.json"),
-      JSON.stringify({ workspaces: ["packages/*"], dependencies: { turbo: "^1" } })
+      JSON.stringify({ workspaces: ["packages/*"], dependencies: { turbo: "^1" } }),
     );
     mkdirSync(join(dir, "packages", "api"), { recursive: true });
     writeFileSync(
       join(dir, "packages", "api", "package.json"),
-      JSON.stringify({ dependencies: { express: "^4", zod: "^3" } })
+      JSON.stringify({ dependencies: { express: "^4", zod: "^3" } }),
     );
     mkdirSync(join(dir, "packages", "web"), { recursive: true });
     writeFileSync(
       join(dir, "packages", "web", "package.json"),
-      JSON.stringify({ dependencies: { react: "^18", next: "^14" } })
+      JSON.stringify({ dependencies: { react: "^18", next: "^14" } }),
     );
 
     const { stdout } = await runCli(`audit ${dir}`);
@@ -516,7 +512,62 @@ describe("D3: Agent Legibility — monorepo and observability", () => {
 
     // avg 2 deps per workspace < 30, should get +1
     expect(result.scores.agent_legibility.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("Lean workspace dependencies")])
+      expect.arrayContaining([expect.stringContaining("Lean workspace dependencies")]),
+    );
+  });
+
+  test("monorepo with unreadable workspace package.json does not award dependency point", async () => {
+    const dir = tmpDir("d3-mono-unreadable-pkg");
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ workspaces: ["packages/*"] }));
+    mkdirSync(join(dir, "packages", "broken"), { recursive: true });
+    writeFileSync(join(dir, "packages", "broken", "package.json"), "{ invalid json");
+
+    const { stdout } = await runCli(`audit ${dir}`);
+    const result = JSON.parse(stdout);
+
+    expect(result.scores.agent_legibility.findings).toEqual(
+      expect.arrayContaining([expect.stringContaining("No readable workspace package.json files")]),
+    );
+    expect(result.scores.agent_legibility.findings).not.toEqual(
+      expect.arrayContaining([expect.stringContaining("Lean workspace dependencies")]),
+    );
+  });
+
+  test("CLI repos can satisfy observability via diagnosability signals", async () => {
+    const dir = tmpDir("d3-cli-diagnosability");
+    writeFileSync(
+      join(dir, "package.json"),
+      JSON.stringify({
+        name: "example-cli",
+        bin: { "example-cli": "bin/example-cli.js" },
+        scripts: { start: "node index.js" },
+      }),
+    );
+    writeFileSync(join(dir, "README.md"), "# Example CLI\n\nRun `example-cli doctor` for diagnostics.\n");
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(join(dir, "src", "index.ts"), "export function doctor() { return true; }\n");
+    writeFileSync(join(dir, "index.test.ts"), 'test("help", () => "--help Unknown command doctor");\n');
+
+    const { stdout } = await runCli(`audit ${dir}`);
+    const result = JSON.parse(stdout);
+
+    expect(result.scores.agent_legibility.findings).toEqual(
+      expect.arrayContaining([expect.stringContaining("CLI diagnosability signals found")]),
+    );
+  });
+
+  test("non-CLI repos still require observability signals", async () => {
+    const dir = tmpDir("d3-non-cli-no-obs");
+    writeFileSync(
+      join(dir, "package.json"),
+      JSON.stringify({ name: "web-app", scripts: { dev: "next dev" }, dependencies: { react: "^18" } }),
+    );
+
+    const { stdout } = await runCli(`audit ${dir}`);
+    const result = JSON.parse(stdout);
+
+    expect(result.scores.agent_legibility.findings).toEqual(
+      expect.arrayContaining([expect.stringContaining("No observability stack detected")]),
     );
   });
 });
@@ -527,30 +578,27 @@ describe("D4: Golden Principles — depth checks", () => {
     mkdirSync(join(dir, "docs"), { recursive: true });
     writeFileSync(
       join(dir, "docs", "golden-principles.md"),
-      "# Golden Principles\n\n## Rule One\n\n## Rule Two\n\n## Rule Three\n\n## Rule Four\n\n## Rule Five\n\n## Rule Six\n"
+      "# Golden Principles\n\n## Rule One\n\n## Rule Two\n\n## Rule Three\n\n## Rule Four\n\n## Rule Five\n\n## Rule Six\n",
     );
 
     const { stdout } = await runCli(`audit ${dir}`);
     const result = JSON.parse(stdout);
 
     expect(result.scores.golden_principles.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("6 principles")])
+      expect.arrayContaining([expect.stringContaining("6 principles")]),
     );
   });
 
   test("warns when fewer than 5 principles", async () => {
     const dir = tmpDir("d4-few");
     mkdirSync(join(dir, "docs"), { recursive: true });
-    writeFileSync(
-      join(dir, "docs", "golden-principles.md"),
-      "# Golden Principles\n\n## Rule One\n\n## Rule Two\n"
-    );
+    writeFileSync(join(dir, "docs", "golden-principles.md"), "# Golden Principles\n\n## Rule One\n\n## Rule Two\n");
 
     const { stdout } = await runCli(`audit ${dir}`);
     const result = JSON.parse(stdout);
 
     expect(result.scores.golden_principles.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("consider adding more")])
+      expect.arrayContaining([expect.stringContaining("consider adding more")]),
     );
   });
 
@@ -559,14 +607,14 @@ describe("D4: Golden Principles — depth checks", () => {
     mkdirSync(join(dir, "docs"), { recursive: true });
     writeFileSync(
       join(dir, "docs", "golden-principles.md"),
-      "# Golden Principles\n\n## Anti-patterns\n\nNever use any in TypeScript.\nAvoid nested ternaries.\n"
+      "# Golden Principles\n\n## Anti-patterns\n\nNever use any in TypeScript.\nAvoid nested ternaries.\n",
     );
 
     const { stdout } = await runCli(`audit ${dir}`);
     const result = JSON.parse(stdout);
 
     expect(result.scores.golden_principles.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("Anti-patterns documented")])
+      expect.arrayContaining([expect.stringContaining("Anti-patterns documented")]),
     );
   });
 
@@ -575,14 +623,14 @@ describe("D4: Golden Principles — depth checks", () => {
     mkdirSync(join(dir, ".github", "workflows"), { recursive: true });
     writeFileSync(
       join(dir, ".github", "workflows", "ci.yml"),
-      "name: CI\njobs:\n  quality:\n    steps:\n      - run: bun lint\n      - run: bun test\n      - run: bun typecheck\n      - run: bun build\n"
+      "name: CI\njobs:\n  quality:\n    steps:\n      - run: bun lint\n      - run: bun test\n      - run: bun typecheck\n      - run: bun build\n",
     );
 
     const { stdout } = await runCli(`audit ${dir}`);
     const result = JSON.parse(stdout);
 
     expect(result.scores.golden_principles.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("CI enforces")])
+      expect.arrayContaining([expect.stringContaining("CI enforces")]),
     );
   });
 });
@@ -597,7 +645,7 @@ describe("D5: Agent Workflow — tightened checks", () => {
 
     expect(result.scores.agent_workflow.score).toBeGreaterThanOrEqual(1);
     expect(result.scores.agent_workflow.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("Agent configuration found")])
+      expect.arrayContaining([expect.stringContaining("Agent configuration found")]),
     );
   });
 
@@ -609,7 +657,7 @@ describe("D5: Agent Workflow — tightened checks", () => {
     const result = JSON.parse(stdout);
 
     expect(result.scores.agent_workflow.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("risk-policy.json")])
+      expect.arrayContaining([expect.stringContaining("risk-policy.json")]),
     );
   });
 
@@ -622,7 +670,7 @@ describe("D5: Agent Workflow — tightened checks", () => {
     const result = JSON.parse(stdout);
 
     expect(result.scores.agent_workflow.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("issue templates")])
+      expect.arrayContaining([expect.stringContaining("issue templates")]),
     );
   });
 
@@ -631,14 +679,14 @@ describe("D5: Agent Workflow — tightened checks", () => {
     mkdirSync(join(dir, ".github", "workflows"), { recursive: true });
     writeFileSync(
       join(dir, ".github", "workflows", "ci.yml"),
-      "name: CI\njobs:\n  qa:\n    steps:\n      - run: bun lint\n      - run: bun test\n      - run: bun build\n"
+      "name: CI\njobs:\n  qa:\n    steps:\n      - run: bun lint\n      - run: bun test\n      - run: bun build\n",
     );
 
     const { stdout } = await runCli(`audit ${dir}`);
     const result = JSON.parse(stdout);
 
     expect(result.scores.agent_workflow.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("CI workflows with enforcement")])
+      expect.arrayContaining([expect.stringContaining("CI workflows with enforcement")]),
     );
   });
 
@@ -647,14 +695,30 @@ describe("D5: Agent Workflow — tightened checks", () => {
     mkdirSync(join(dir, ".github", "workflows"), { recursive: true });
     writeFileSync(
       join(dir, ".github", "workflows", "deploy.yml"),
-      "name: Deploy\njobs:\n  deploy:\n    steps:\n      - run: echo deploying\n"
+      "name: Deploy\njobs:\n  deploy:\n    steps:\n      - run: echo deploying\n",
     );
 
     const { stdout } = await runCli(`audit ${dir}`);
     const result = JSON.parse(stdout);
 
     expect(result.scores.agent_workflow.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("lack sufficient enforcement")])
+      expect.arrayContaining([expect.stringContaining("lack sufficient enforcement")]),
+    );
+  });
+
+  test("does not treat actions/checkout as an enforcement gate", async () => {
+    const dir = tmpDir("d5-ci-checkout-only");
+    mkdirSync(join(dir, ".github", "workflows"), { recursive: true });
+    writeFileSync(
+      join(dir, ".github", "workflows", "ci.yml"),
+      "name: CI\njobs:\n  setup:\n    steps:\n      - uses: actions/checkout@v4\n",
+    );
+
+    const { stdout } = await runCli(`audit ${dir}`);
+    const result = JSON.parse(stdout);
+
+    expect(result.scores.agent_workflow.findings).toEqual(
+      expect.arrayContaining([expect.stringContaining("lack sufficient enforcement")]),
     );
   });
 });
@@ -671,7 +735,7 @@ describe("D6: Garbage Collection — active GC detection", () => {
     const result = JSON.parse(stdout);
 
     expect(result.scores.garbage_collection.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("Active doc-gardening detected")])
+      expect.arrayContaining([expect.stringContaining("Active doc-gardening detected")]),
     );
   });
 
@@ -686,22 +750,19 @@ describe("D6: Garbage Collection — active GC detection", () => {
     const result = JSON.parse(stdout);
 
     expect(result.scores.garbage_collection.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("Active doc-gardening detected")])
+      expect.arrayContaining([expect.stringContaining("Active doc-gardening detected")]),
     );
   });
 
   test("risk-policy.json with docsDriftRules counts for quality grades", async () => {
     const dir = tmpDir("d6-drift");
-    writeFileSync(
-      join(dir, "risk-policy.json"),
-      '{"docsDriftRules": [{"watch": "src/", "docs": "docs/api.md"}]}'
-    );
+    writeFileSync(join(dir, "risk-policy.json"), '{"docsDriftRules": [{"watch": "src/", "docs": "docs/api.md"}]}');
 
     const { stdout } = await runCli(`audit ${dir}`);
     const result = JSON.parse(stdout);
 
     expect(result.scores.garbage_collection.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("Drift enforcement detected")])
+      expect.arrayContaining([expect.stringContaining("Drift enforcement detected")]),
     );
   });
 
@@ -714,7 +775,7 @@ describe("D6: Garbage Collection — active GC detection", () => {
     const result = JSON.parse(stdout);
 
     expect(result.scores.garbage_collection.findings).toEqual(
-      expect.arrayContaining([expect.stringContaining("Drift enforcement detected")])
+      expect.arrayContaining([expect.stringContaining("Drift enforcement detected")]),
     );
   });
 });
@@ -724,7 +785,7 @@ describe("D6: Garbage Collection — active GC detection", () => {
 describe("doctor — new checks", () => {
   test("checks for risk-policy.json", async () => {
     const dir = tmpDir("doctor-risk");
-    writeFileSync(join(dir, "risk-policy.json"), '{}');
+    writeFileSync(join(dir, "risk-policy.json"), "{}");
 
     const { stdout } = await runCli(`doctor ${dir}`);
     const result = JSON.parse(stdout);
@@ -759,7 +820,7 @@ describe("doctor — new checks", () => {
     mkdirSync(join(dir, ".github", "workflows"), { recursive: true });
     writeFileSync(
       join(dir, ".github", "workflows", "ci.yml"),
-      "name: CI\njobs:\n  check:\n    steps:\n      - run: bun lint\n      - run: bun test\n"
+      "name: CI\njobs:\n  check:\n    steps:\n      - run: bun lint\n      - run: bun test\n",
     );
 
     const { stdout } = await runCli(`doctor ${dir}`);
@@ -777,9 +838,12 @@ describe("evolve — updated paths", () => {
     // Create enough structure to reach L2 (score 9-13)
     await runCli(`init ${dir}`);
     // Add linter and CI to boost score
-    writeFileSync(join(dir, "biome.json"), '{}');
+    writeFileSync(join(dir, "biome.json"), "{}");
     mkdirSync(join(dir, ".github", "workflows"), { recursive: true });
-    writeFileSync(join(dir, ".github", "workflows", "ci.yml"), "name: CI\njobs:\n  test:\n    run: bun test\n  lint:\n    run: bun lint\n");
+    writeFileSync(
+      join(dir, ".github", "workflows", "ci.yml"),
+      "name: CI\njobs:\n  test:\n    run: bun test\n  lint:\n    run: bun lint\n",
+    );
     writeFileSync(join(dir, "CLAUDE.md"), "# Agent config");
 
     const { stdout } = await runCli(`evolve ${dir}`);
@@ -788,12 +852,8 @@ describe("evolve — updated paths", () => {
     // Should be at L2 or higher
     if (result.current_level.startsWith("L2")) {
       const stepActions = result.steps.map((s: { action: string }) => s.action);
-      expect(stepActions).toEqual(
-        expect.arrayContaining([expect.stringContaining("risk tiers")])
-      );
-      expect(stepActions).toEqual(
-        expect.arrayContaining([expect.stringContaining("doc-gardening")])
-      );
+      expect(stepActions).toEqual(expect.arrayContaining([expect.stringContaining("risk tiers")]));
+      expect(stepActions).toEqual(expect.arrayContaining([expect.stringContaining("doc-gardening")]));
     }
   });
 });

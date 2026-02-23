@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "tiers": ["low", "medium", "high"],
+  "watchPaths": ["cli/reins/src/", "docs/", "skill/Reins/"],
+  "docsDriftRules": [
+    {
+      "watch": "cli/reins/src/",
+      "docs": ["ARCHITECTURE.md", "docs/design-docs/index.md", "docs/golden-principles.md"]
+    },
+    {
+      "watch": "skill/Reins/",
+      "docs": ["AGENTS.md", "skill/Reins/HarnessMethodology.md", "skill/Reins/Workflows/Audit.md"]
+    }
+  ]
+}
