@@ -240,17 +240,13 @@ function applyEvolveScaffolding(
   targetPath: string,
   runApply: boolean,
   shouldRecommendFactoryPack: boolean,
-  path: EvolutionPath,
   runInit: EvolveDeps["runInit"],
 ): string[] {
   const applied: string[] = [];
   if (!runApply) return applied;
 
-  const needsInitScaffold = path.steps.some(
-    (step) => step.automated && (step.action.includes("AGENTS.md") || step.action.includes("docs/")),
-  );
   const missingBaseScaffold = hasMissingBaseScaffold(targetDir);
-  if (needsInitScaffold && missingBaseScaffold) {
+  if (missingBaseScaffold) {
     const initPack: AutomationPack = shouldRecommendFactoryPack ? "agent-factory" : "none";
     runInit({ path: targetPath, name: "", force: false, pack: initPack, allowExistingAgents: true });
     applied.push(
@@ -355,7 +351,6 @@ export function runEvolve(targetPath: string, runApply: boolean, deps: EvolveDep
     targetPath,
     runApply,
     packState.shouldRecommendFactoryPack,
-    path,
     deps.runInit,
   );
 
