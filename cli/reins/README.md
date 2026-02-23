@@ -10,6 +10,7 @@ A development methodology where **humans steer and agents execute**. All code â€
 
 ```bash
 # From npm
+# "." means "current directory"
 npx reins-cli audit .
 
 # Or clone and link
@@ -20,6 +21,8 @@ bun link
 ```
 
 ## Commands
+
+Path reminder: `.` = current directory, `..` = parent directory.
 
 ### `reins init <path>`
 
