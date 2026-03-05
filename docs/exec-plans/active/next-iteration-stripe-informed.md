@@ -185,9 +185,15 @@ interface ReinsPlugin {
 }
 ```
 
-**Discovery:** `reins audit` looks for `.reins/plugins/*.ts` (or `.js`) files. Each exports a `ReinsPlugin`. Plugin scores are added to the relevant dimension's findings (not to the main score — plugins are advisory in v1).
+**Discovery:** `reins audit` looks for `.reins/plugins/*.ts` (or `.js`) files when the `--enable-plugins` flag is passed. Plugins are **never** loaded by default to prevent untrusted code execution when auditing third-party repos. Each plugin exports a `ReinsPlugin`. Plugin scores are added to the relevant dimension's findings (not to the main score — plugins are advisory in v1).
 
-**Success criteria:** Teams can write a `.reins/plugins/my-check.ts` file and see its output in `reins audit`.
+**Security constraints:**
+- Plugins require explicit opt-in via `--enable-plugins` flag
+- Discovery restricted to the target repo's `.reins/plugins/` directory only
+- Each plugin runs in an isolated child process with a 10-second timeout
+- Plugin failures are reported as warnings, never crash the auditor
+
+**Success criteria:** Teams can write a `.reins/plugins/my-check.ts` file and see its output in `reins audit --enable-plugins`.
 
 ### WS10: Address Tech Debt TD-006 — Compare Command
 
