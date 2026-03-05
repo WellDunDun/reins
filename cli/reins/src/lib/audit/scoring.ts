@@ -447,7 +447,8 @@ function detectZteSignals(result: AuditResult, ctx: AuditRuntimeContext): void {
       const hasPushToMain =
         /push:[\s\S]*?branches:[\s\S]*?(?:-\s*["']?main["']?|\[\s*["']?main["']?\s*\])/i.test(content);
       const hasDeploySignal = /\bdeploy(?:ment)?\b/i.test(content);
-      if ((hasPushToMain && hasDeploySignal) || /merge.*deploy|deploy.*merge/i.test(content)) {
+      const hasMergeDeploySignal = /merge[\s\S]*deploy|deploy[\s\S]*merge/i.test(content);
+      if ((hasPushToMain && hasDeploySignal) || hasMergeDeploySignal) {
         hasDeployOnMerge = true;
       }
     }
