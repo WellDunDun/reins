@@ -4,9 +4,14 @@ How reins relates to other agent-first development tools.
 
 ## The Layer Model
 
-Agent-first development operates across three layers. Each layer solves a distinct problem and tools at one layer don't replace tools at another.
+Agent-first development operates across four layers. Each layer solves a distinct problem and tools at one layer don't replace tools at another.
 
 ```
+Layer 4: AGENT INFRASTRUCTURE
+         Dedicated agent sandboxes, pre-warmed dev boxes, tool registries.
+         Tools: Stripe Minions, E2B, Modal, Codex cloud sandboxes.
+         Problem solved: agent compute isolation, parallel scaling, tool discovery.
+
 Layer 3: SESSION EXECUTION
          How agents execute work within a single coding session.
          Tools: GSD, Flow-Next, custom prompt chains.
@@ -95,6 +100,10 @@ Repository: https://github.com/gmickel/flow-next-opencode
 
 Session orchestrators assume the repo is navigable. Reins makes it navigable. Without clear `AGENTS.md`, documented architecture, and golden principles, session orchestrators are steering agents through a codebase with no map.
 
+### Stripe Minions and Layer 4
+
+Stripe's Minions system operates at Layer 3+4 simultaneously — orchestrating agent sessions while managing dedicated compute sandboxes, tool registries, and parallel scaling infrastructure. Their blueprint engines validate the Layer 2 approach that Reins takes: blueprints need documented architecture, golden principles, and agent-legible repos to function. The structural foundation Reins provides at Layer 2 is exactly what systems like Minions depend on to operate effectively at the layers above.
+
 ## The Ideal Stack
 
 ```
@@ -102,6 +111,7 @@ reins init .                              Scaffold structure
 reins audit .                             Measure readiness
 reins evolve .                            Level up maturity
   + GSD or Flow-Next                      Execute coding sessions
+  + Minions / E2B / Modal                 Agent infrastructure
   + CI enforcement of golden principles   Continuous quality
   + Background garbage collection agents  Continuous cleanup
 ```
