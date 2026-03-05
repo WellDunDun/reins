@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { detectCliDiagnosabilitySignals } from "../detection";
 import { findFiles, safeReadDir } from "../filesystem";
@@ -71,10 +71,25 @@ function scoreRepositoryExecutionPlans(result: AuditResult, ctx: AuditRuntimeCon
   }
 }
 
+function scoreConditionalContext(result: AuditResult, ctx: AuditRuntimeContext): void {
+  if (ctx.hasGlobBasedRules) {
+    result.scores.repository_knowledge.score++;
+    result.scores.repository_knowledge.findings.push("Glob-based rule files detected");
+    return;
+  }
+  if (ctx.hierarchicalAgentContextCount >= 3) {
+    result.scores.repository_knowledge.score++;
+    result.scores.repository_knowledge.findings.push(
+      `Conditional context engineering detected (${ctx.hierarchicalAgentContextCount} hierarchical files)`,
+    );
+  }
+}
+
 function scoreRepositoryKnowledge(result: AuditResult, ctx: AuditRuntimeContext): void {
   scoreRepositoryAgents(result, ctx);
   scoreRepositoryDocs(result, ctx);
   scoreRepositoryExecutionPlans(result, ctx);
+  scoreConditionalContext(result, ctx);
 }
 
 function hasDeepLinterEnforcement(ctx: AuditRuntimeContext): boolean {
@@ -288,6 +303,16 @@ function scoreDependencyFootprint(result: AuditResult, ctx: AuditRuntimeContext)
   }
 }
 
+function scoreToolRegistry(result: AuditResult, ctx: AuditRuntimeContext): void {
+  if (ctx.hasMcpConfig || ctx.hasSkillsManifest) {
+    result.scores.agent_legibility.score++;
+    const signals: string[] = [];
+    if (ctx.hasMcpConfig) signals.push("MCP config");
+    if (ctx.hasSkillsManifest) signals.push("skills manifest");
+    result.scores.agent_legibility.findings.push(`Declared tool registry: ${signals.join("|")}`);
+  }
+}
+
 function scoreAgentLegibility(result: AuditResult, ctx: AuditRuntimeContext): void {
   if (existsSync(ctx.pkgJsonPath)) {
     try {
@@ -308,6 +333,7 @@ function scoreAgentLegibility(result: AuditResult, ctx: AuditRuntimeContext): vo
 
   scoreObservability(result, ctx);
   scoreDependencyFootprint(result, ctx);
+  scoreToolRegistry(result, ctx);
 }
 
 function scoreGoldenPrinciples(result: AuditResult, ctx: AuditRuntimeContext): void {
@@ -395,10 +421,55 @@ function scoreAgentWorkflowCi(result: AuditResult, ctx: AuditRuntimeContext): vo
   }
 }
 
+function scoreAgentWorkflowBlueprints(result: AuditResult, ctx: AuditRuntimeContext): void {
+  if (ctx.hasAgentCommands || ctx.hasSessionOrchestrator) {
+    result.scores.agent_workflow.score++;
+    const signals: string[] = [];
+    if (ctx.hasAgentCommands) signals.push("commands");
+    if (ctx.hasSessionOrchestrator) signals.push("orchestrator");
+    result.scores.agent_workflow.findings.push(`Agent blueprint signals: ${signals.join("|")}`);
+  }
+}
+
+function detectZteSignals(result: AuditResult, ctx: AuditRuntimeContext): void {
+  if (!existsSync(ctx.workflowDir)) return;
+
+  let hasAutoMerge = false;
+  let hasDeployOnMerge = false;
+
+  try {
+    const files = readdirSync(ctx.workflowDir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
+    for (const file of files) {
+      const content = readFileSync(join(ctx.workflowDir, file), "utf-8");
+      if (/auto-merge|mergify|kodiak/i.test(content)) {
+        hasAutoMerge = true;
+      }
+      const hasPushToMain =
+        /push:[\s\S]*?branches:[\s\S]*?(?:-\s*["']?main["']?|\[\s*["']?main["']?\s*\])/i.test(content);
+      const hasDeploySignal = /\bdeploy(?:ment)?\b/i.test(content);
+      const hasMergeDeploySignal = /merge[\s\S]*deploy|deploy[\s\S]*merge/i.test(content);
+      if ((hasPushToMain && hasDeploySignal) || hasMergeDeploySignal) {
+        hasDeployOnMerge = true;
+      }
+    }
+  } catch {
+    // ignore read errors
+  }
+
+  if (hasAutoMerge) {
+    result.scores.agent_workflow.findings.push("ZTE signal: auto-merge configuration detected");
+  }
+  if (hasDeployOnMerge) {
+    result.scores.agent_workflow.findings.push("ZTE signal: deploy-on-merge pattern detected");
+  }
+}
+
 function scoreAgentWorkflow(result: AuditResult, ctx: AuditRuntimeContext): void {
   scoreAgentWorkflowConfig(result, ctx);
   scoreAgentWorkflowGovernance(result, ctx);
   scoreAgentWorkflowCi(result, ctx);
+  scoreAgentWorkflowBlueprints(result, ctx);
+  detectZteSignals(result, ctx);
 }
 
 function hasActiveDocGardening(ctx: AuditRuntimeContext): boolean {
@@ -476,9 +547,9 @@ export function applyAuditScoring(result: AuditResult, ctx: AuditRuntimeContext)
 }
 
 export function resolveMaturityLevel(totalScore: number): string {
-  if (totalScore <= 4) return "L0: Manual";
-  if (totalScore <= 8) return "L1: Assisted";
-  if (totalScore <= 13) return "L2: Steered";
-  if (totalScore <= 16) return "L3: Autonomous";
-  return "L4: Self-Correcting";
+  if (totalScore <= 5) return "L0: Manual";
+  if (totalScore <= 10) return "L1: Inloop";
+  if (totalScore <= 15) return "L2: Guided Outloop";
+  if (totalScore <= 18) return "L3: Full Outloop";
+  return "L4: Zero Touch";
 }

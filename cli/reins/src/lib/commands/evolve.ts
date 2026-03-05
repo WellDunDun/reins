@@ -25,7 +25,7 @@ interface EvolveDeps {
 const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
   L0: {
     from: "L0: Manual",
-    to: "L1: Assisted",
+    to: "L1: Inloop",
     goal: "Get agents into the development loop",
     steps: [
       {
@@ -62,8 +62,8 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
     success_criteria: "Agent can read AGENTS.md, follow pointers, and open a useful PR.",
   },
   L1: {
-    from: "L1: Assisted",
-    to: "L2: Steered",
+    from: "L1: Inloop",
+    to: "L2: Guided Outloop",
     goal: "Shift from human-writes-code to human-steers-agent",
     steps: [
       {
@@ -100,8 +100,8 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
     success_criteria: "Most new code is written by agents, not humans.",
   },
   L2: {
-    from: "L2: Steered",
-    to: "L3: Autonomous",
+    from: "L2: Guided Outloop",
+    to: "L3: Full Outloop",
     goal: "Agent handles full PR lifecycle end-to-end",
     steps: [
       {
@@ -119,18 +119,24 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
       },
       {
         step: 3,
+        action: "Add conditional context engineering",
+        description: "Create glob-based rule files (.cursor/rules/, .claude/rules/) and per-directory AGENTS.md for targeted agent context.",
+        automated: false,
+      },
+      {
+        step: 4,
         action: "Enable self-validation",
         description: "Agent drives the app, takes screenshots, checks behavior against expectations.",
         automated: false,
       },
       {
-        step: 4,
+        step: 5,
         action: "Add doc-gardening automation",
         description: "Add verification headers (<!-- Verified: -->), freshness scripts, and recurring doc review.",
         automated: false,
       },
       {
-        step: 5,
+        step: 6,
         action: "Build escalation paths",
         description: "Clear criteria for when to involve humans vs. when agents can proceed autonomously.",
         automated: false,
@@ -139,8 +145,8 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
     success_criteria: "Agent can end-to-end ship a feature from prompt to merge.",
   },
   L3: {
-    from: "L3: Autonomous",
-    to: "L4: Self-Correcting",
+    from: "L3: Full Outloop",
+    to: "L4: Zero Touch",
     goal: "System maintains and improves itself without human intervention",
     steps: [
       {
@@ -163,12 +169,24 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
       },
       {
         step: 4,
+        action: "Declare agent tooling registry",
+        description: "Create MCP config (.claude/mcp.json or mcp.json) and skills manifest declaring available tools for agents.",
+        automated: false,
+      },
+      {
+        step: 5,
+        action: "Implement non-human agent entry points",
+        description: "Add Slack, API, cron, or webhook triggers so agents can start work without human prompting.",
+        automated: false,
+      },
+      {
+        step: 6,
         action: "Track tech debt continuously",
         description: "In-repo tracker with recurring review — debt paid down in small increments.",
         automated: true,
       },
       {
-        step: 5,
+        step: 7,
         action: "Establish docs-drift rules",
         description: "Link code changes to required doc updates via risk-policy.json watchPaths and docsDriftRules.",
         automated: false,
@@ -179,10 +197,10 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
 };
 
 function resolveCurrentLevelKey(totalScore: number): LevelKey {
-  if (totalScore <= 4) return "L0";
-  if (totalScore <= 8) return "L1";
-  if (totalScore <= 13) return "L2";
-  if (totalScore <= 16) return "L3";
+  if (totalScore <= 5) return "L0";
+  if (totalScore <= 10) return "L1";
+  if (totalScore <= 15) return "L2";
+  if (totalScore <= 18) return "L3";
   return "L4";
 }
 
@@ -330,7 +348,7 @@ function printL4Response(auditResult: AuditResult): void {
         project: auditResult.project,
         current_level: auditResult.maturity_level,
         current_score: auditResult.total_score,
-        message: "Already at L4: Self-Correcting. Focus on maintaining quality grades and continuous improvement.",
+        message: "Already at L4: Zero Touch. Focus on maintaining quality grades and continuous improvement.",
         pack_recommendation: {
           recommended: null,
           reason: "Already at L4. Keep existing automation healthy and continuously verified.",

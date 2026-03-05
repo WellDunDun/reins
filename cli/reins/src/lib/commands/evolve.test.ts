@@ -12,18 +12,19 @@ describe("runEvolve unit behavior", () => {
 
     const mockAuditResult: AuditResult = {
       project: "sample",
+      schema_version: "2.0",
       timestamp: new Date().toISOString(),
       scores: {
-        repository_knowledge: { score: 3, max: 3, findings: [] },
+        repository_knowledge: { score: 3, max: 4, findings: [] },
         architecture_enforcement: { score: 3, max: 3, findings: [] },
-        agent_legibility: { score: 3, max: 3, findings: [] },
+        agent_legibility: { score: 3, max: 4, findings: [] },
         golden_principles: { score: 3, max: 3, findings: [] },
-        agent_workflow: { score: 1, max: 3, findings: [] },
-        garbage_collection: { score: 1, max: 3, findings: [] },
+        agent_workflow: { score: 3, max: 4, findings: [] },
+        garbage_collection: { score: 2, max: 3, findings: [] },
       },
-      total_score: 14,
-      max_score: 18,
-      maturity_level: "L3: Autonomous",
+      total_score: 17,
+      max_score: 21,
+      maturity_level: "L3: Full Outloop",
       recommendations: [],
     };
 
