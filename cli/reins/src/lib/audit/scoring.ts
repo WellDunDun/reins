@@ -434,19 +434,29 @@ function scoreAgentWorkflowBlueprints(result: AuditResult, ctx: AuditRuntimeCont
 function detectZteSignals(result: AuditResult, ctx: AuditRuntimeContext): void {
   if (!existsSync(ctx.workflowDir)) return;
 
+  let hasAutoMerge = false;
+  let hasDeployOnMerge = false;
+
   try {
     const files = readdirSync(ctx.workflowDir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
     for (const file of files) {
       const content = readFileSync(join(ctx.workflowDir, file), "utf-8");
       if (/auto-merge|mergify|kodiak/i.test(content)) {
-        result.scores.agent_workflow.findings.push("ZTE signal: auto-merge configuration detected");
+        hasAutoMerge = true;
       }
       if (/push:[\s\S]*?branches:[\s\S]*?main|merge.*deploy|deploy.*merge/i.test(content)) {
-        result.scores.agent_workflow.findings.push("ZTE signal: deploy-on-merge pattern detected");
+        hasDeployOnMerge = true;
       }
     }
   } catch {
     // ignore read errors
+  }
+
+  if (hasAutoMerge) {
+    result.scores.agent_workflow.findings.push("ZTE signal: auto-merge configuration detected");
+  }
+  if (hasDeployOnMerge) {
+    result.scores.agent_workflow.findings.push("ZTE signal: deploy-on-merge pattern detected");
   }
 }
 
