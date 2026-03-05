@@ -36,11 +36,11 @@ EXAMPLES:
   reins doctor .                  # Get prescriptive fixes
 
 MATURITY LEVELS:
-  L0: Manual          (0-4)   Traditional engineering
-  L1: Assisted        (5-8)   Agents help, humans still code
-  L2: Steered         (9-13)  Humans steer, agents execute
-  L3: Autonomous      (14-16) Agents handle full lifecycle
-  L4: Self-Correcting (17-18) System maintains itself
+  L0: Manual          (0-5)   Traditional engineering
+  L1: Inloop          (6-10)  Agents in the loop, humans code
+  L2: Guided Outloop  (11-15) Humans steer, agents execute
+  L3: Full Outloop    (16-18) Agents handle full lifecycle
+  L4: Zero Touch      (19-21) System maintains itself
 `;
   console.log(help);
 }

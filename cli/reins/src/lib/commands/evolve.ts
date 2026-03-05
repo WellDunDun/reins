@@ -25,7 +25,7 @@ interface EvolveDeps {
 const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
   L0: {
     from: "L0: Manual",
-    to: "L1: Assisted",
+    to: "L1: Inloop",
     goal: "Get agents into the development loop",
     steps: [
       {
@@ -62,8 +62,8 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
     success_criteria: "Agent can read AGENTS.md, follow pointers, and open a useful PR.",
   },
   L1: {
-    from: "L1: Assisted",
-    to: "L2: Steered",
+    from: "L1: Inloop",
+    to: "L2: Guided Outloop",
     goal: "Shift from human-writes-code to human-steers-agent",
     steps: [
       {
@@ -100,8 +100,8 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
     success_criteria: "Most new code is written by agents, not humans.",
   },
   L2: {
-    from: "L2: Steered",
-    to: "L3: Autonomous",
+    from: "L2: Guided Outloop",
+    to: "L3: Full Outloop",
     goal: "Agent handles full PR lifecycle end-to-end",
     steps: [
       {
@@ -145,8 +145,8 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
     success_criteria: "Agent can end-to-end ship a feature from prompt to merge.",
   },
   L3: {
-    from: "L3: Autonomous",
-    to: "L4: Self-Correcting",
+    from: "L3: Full Outloop",
+    to: "L4: Zero Touch",
     goal: "System maintains and improves itself without human intervention",
     steps: [
       {
@@ -348,7 +348,7 @@ function printL4Response(auditResult: AuditResult): void {
         project: auditResult.project,
         current_level: auditResult.maturity_level,
         current_score: auditResult.total_score,
-        message: "Already at L4: Self-Correcting. Focus on maintaining quality grades and continuous improvement.",
+        message: "Already at L4: Zero Touch. Focus on maintaining quality grades and continuous improvement.",
         pack_recommendation: {
           recommended: null,
           reason: "Already at L4. Keep existing automation healthy and continuously verified.",

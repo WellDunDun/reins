@@ -6,6 +6,7 @@ export interface AuditScore {
 
 export interface AuditResult {
   project: string;
+  schema_version: string;
   timestamp: string;
   scores: {
     repository_knowledge: AuditScore;
@@ -16,7 +17,7 @@ export interface AuditResult {
     garbage_collection: AuditScore;
   };
   total_score: number;
-  max_score: 18;
+  max_score: 21;
   maturity_level: string;
   recommendations: string[];
 }

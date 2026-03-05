@@ -183,7 +183,7 @@ describe("reins audit", () => {
 
     const result = JSON.parse(stdout);
     expect(result.total_score).toBe(0);
-    expect(result.max_score).toBe(18);
+    expect(result.max_score).toBe(21);
     expect(result.maturity_level).toBe("L0: Manual");
     expect(result.scores.repository_knowledge.score).toBe(0);
     expect(result.scores.architecture_enforcement.score).toBe(0);
@@ -268,7 +268,7 @@ describe("reins audit", () => {
     expect(result).toHaveProperty("max_score");
     expect(result).toHaveProperty("maturity_level");
     expect(result).toHaveProperty("recommendations");
-    expect(result.max_score).toBe(18);
+    expect(result.max_score).toBe(21);
   });
 
   test("fails on nonexistent directory", async () => {
@@ -331,7 +331,7 @@ describe("reins evolve", () => {
     const result = JSON.parse(stdout);
     expect(result.command).toBe("evolve");
     expect(result.current_level).toBe("L0: Manual");
-    expect(result.next_level).toBe("L1: Assisted");
+    expect(result.next_level).toBe("L1: Inloop");
     expect(result.steps.length).toBe(5);
     expect(result.success_criteria).toBeTruthy();
     expect(result.weakest_dimensions).toBeDefined();
@@ -347,7 +347,7 @@ describe("reins evolve", () => {
     // After init, should be at least L1
     expect(result.current_level).toMatch(/L1|L2/);
     if (result.current_level.startsWith("L1")) {
-      expect(result.next_level).toBe("L2: Steered");
+      expect(result.next_level).toBe("L2: Guided Outloop");
     }
   });
 
