@@ -7,7 +7,7 @@ Source: Stripe Minions agentic engineering analysis (IndyDevDan extract-wisdom, 
 
 ## Thesis
 
-Stripe's Minions system validates Reins' core architecture — blueprints, conditional rules, tool registries, and agent sandboxes all map to existing Reins audit dimensions. The next iteration should **deepen existing dimensions** with richer sub-checks rather than adding new dimensions. This keeps the 6-dimension/0-18 JSON contract stable while dramatically increasing the signal quality of each score point.
+Stripe's Minions system validates Reins' core architecture — blueprints, conditional rules, tool registries, and agent sandboxes all map to existing Reins audit dimensions. The next iteration should **deepen existing dimensions** with richer sub-checks rather than adding new dimensions. This keeps the 6-dimension JSON contract stable while increasing the score ceiling from 18 to 21 and dramatically improving signal quality per point.
 
 ## Strategic Approach
 
@@ -222,7 +222,7 @@ With P0 changes (WS1-WS3), max score increases from 18 to 21. Maturity threshold
 
 ## Implementation Order
 
-```
+```text
 Phase 1 (P0): WS1 + WS2 + WS3 → deeper sub-checks in 3 dimensions
               + score threshold recalibration + schema_version field
               Ship as reins-cli v0.2.0

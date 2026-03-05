@@ -444,7 +444,9 @@ function detectZteSignals(result: AuditResult, ctx: AuditRuntimeContext): void {
       if (/auto-merge|mergify|kodiak/i.test(content)) {
         hasAutoMerge = true;
       }
-      if (/push:[\s\S]*?branches:[\s\S]*?main|merge.*deploy|deploy.*merge/i.test(content)) {
+      const hasPushToMain = /push:[\s\S]*?branches:[\s\S]*?(?:-\s*main|\[\s*["']?main["']?\s*\])/i.test(content);
+      const hasDeploySignal = /\bdeploy(?:ment)?\b/i.test(content);
+      if ((hasPushToMain && hasDeploySignal) || /merge.*deploy|deploy.*merge/i.test(content)) {
         hasDeployOnMerge = true;
       }
     }
