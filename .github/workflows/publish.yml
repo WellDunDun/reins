@@ -36,6 +36,7 @@ jobs:
         run: bun src/index.ts audit ../..
 
   publish:
+    if: github.ref == 'refs/heads/master'
     needs: test
     runs-on: ubuntu-latest
     permissions:
