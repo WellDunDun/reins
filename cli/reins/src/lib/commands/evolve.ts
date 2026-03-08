@@ -96,6 +96,13 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
         description: "Describe tasks in natural language. Agents write all code, tests, and docs.",
         automated: false,
       },
+      {
+        step: 6,
+        action: "Define workflow configuration",
+        description:
+          "Create WORKFLOW.md with YAML frontmatter (concurrency, sandbox, hooks) and markdown body (agent prompt template). Versions agent behavior alongside code.",
+        automated: false,
+      },
     ],
     success_criteria: "Most new code is written by agents, not humans.",
   },
@@ -139,6 +146,13 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
         step: 6,
         action: "Build escalation paths",
         description: "Clear criteria for when to involve humans vs. when agents can proceed autonomously.",
+        automated: false,
+      },
+      {
+        step: 7,
+        action: "Create composable skills directory",
+        description:
+          "Add .codex/skills/ or .claude/commands/ with markdown-defined tasks that compose hierarchically (e.g., 'land' delegates to 'commit', 'push', 'pull').",
         automated: false,
       },
     ],
@@ -189,6 +203,13 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
         step: 7,
         action: "Establish docs-drift rules",
         description: "Link code changes to required doc updates via risk-policy.json watchPaths and docsDriftRules.",
+        automated: false,
+      },
+      {
+        step: 8,
+        action: "Implement workspace isolation policy",
+        description:
+          "Define per-issue sandbox boundaries, concurrency limits, and deterministic workspace creation. Prevents cross-contamination between concurrent agent runs.",
         automated: false,
       },
     ],
