@@ -28,7 +28,7 @@ For remediation detail, pair with doctor:
   "total_score": 22,
   "max_score": 22,
   "maturity_level": "L4: Zero Touch",
-  "frameworks_detected": ["next.js", "tailwind"],
+  "frameworks_detected": ["symphony", "claude-code"],
   "recommendations": ["Project is well-structured. Consider evolving to next maturity level."]
 }
 ```
@@ -73,7 +73,7 @@ Score each dimension from 0 up to its max (dimensions have different maxes: RK 0
 | AGENTS.md exists and under 150 lines (hierarchical: per-package in monorepos) | +1 |
 | docs/ directory with indexed design docs (counts decisions in design-docs/index.md) | +1 |
 | Verification headers in docs (`<!-- Verified: DATE -->`) and execution plans versioned in-repo | +1 |
-| Product specs versioned in-repo (`docs/product-specs/`) with index | +1 |
+| Conditional context engineering (glob-based rule files or 3+ hierarchical AGENTS.md files) | +1 |
 
 **Bonus findings:** Hierarchical AGENTS.md detected, verification header count, design decision count.
 
@@ -94,7 +94,7 @@ Score each dimension from 0 up to its max (dimensions have different maxes: RK 0
 | App bootable per worktree (monorepo-aware: detects workspace packages, checks per-workspace bootability) | +1 |
 | Observability accessible to agents (services: Sentry/Vercel/Netlify/Docker; CLIs: diagnosability signals like doctor/help commands) | +1 |
 | Boring tech stack, minimal opaque dependencies (monorepo-aware: per-workspace average, threshold <20 single or <30 avg) | +1 |
-| Structured command output and deterministic error metadata for agent consumption | +1 |
+| Declared tool registry (MCP config or skills manifest for agent tool discovery) | +1 |
 
 **Bonus findings:** Monorepo workspace count, dependency count/average, diagnosability signals.
 

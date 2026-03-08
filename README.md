@@ -269,7 +269,7 @@ graph TD
 | **Agent Workflow** | Agent config, risk policy, PR templates, CI enforcement, orchestration readiness |
 | **Garbage Collection** | Debt tracking, doc-gardening, quality grades, docs drift rules |
 
-## Self-apply: 19/22
+## Self-audit: 19/22
 
 Reins audits itself in CI. Current score:
 

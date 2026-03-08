@@ -134,12 +134,13 @@ function detectTestSignals(targetDir: string): string[] {
 
 export function checkWorkflowConfigForPattern(targetDir: string, pattern: RegExp): boolean {
   const workflowFiles = ["WORKFLOW.md", join(".codex", "WORKFLOW.md"), "workflow.yml"];
+  const safePattern = new RegExp(pattern.source, pattern.flags.replace(/[gy]/g, ""));
   for (const file of workflowFiles) {
     const filePath = join(targetDir, file);
     if (!existsSync(filePath)) continue;
     try {
       const content = readFileSync(filePath, "utf-8");
-      if (pattern.test(content)) return true;
+      if (safePattern.test(content)) return true;
     } catch {
       // ignore read errors
     }

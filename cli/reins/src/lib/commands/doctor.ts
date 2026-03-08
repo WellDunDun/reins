@@ -1,7 +1,7 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { readVerifiedDocs } from "../audit/context";
-import { scanWorkflowsForEnforcement } from "../detection";
+import { checkWorkflowsForMergeProtection, scanWorkflowsForEnforcement } from "../detection";
 import { findFiles } from "../filesystem";
 import type { DoctorCheck } from "../types";
 
@@ -163,7 +163,9 @@ function collectDoctorStructuralLintChecks(targetDir: string): DoctorCheck[] {
 }
 
 function collectDoctorWorkflowConfigCheck(targetDir: string): DoctorCheck[] {
-  const workflowConfigs = ["WORKFLOW.md", "workflow.yml"].map((f) => join(targetDir, f));
+  const workflowConfigs = ["WORKFLOW.md", "workflow.yml", join(".codex", "WORKFLOW.md")].map((f) =>
+    join(targetDir, f),
+  );
   if (workflowConfigs.some(existsSync)) {
     return [{ check: "Workflow configuration found", status: "pass", fix: "" }];
   }
@@ -180,7 +182,15 @@ function collectDoctorSkillsDirectoryCheck(targetDir: string): DoctorCheck[] {
   const skillsDirs = [".codex/skills", ".claude/commands", ".claude/skills", "skills"].map((d) =>
     join(targetDir, d),
   );
-  if (skillsDirs.some(existsSync)) {
+  const hasNonEmptySkillsDir = skillsDirs.some((d) => {
+    if (!existsSync(d)) return false;
+    try {
+      return readdirSync(d).length > 0;
+    } catch {
+      return false;
+    }
+  });
+  if (hasNonEmptySkillsDir) {
     return [{ check: "Skills/commands directory found", status: "pass", fix: "" }];
   }
   return [
@@ -198,16 +208,19 @@ function collectDoctorMergeProtectionCheck(targetDir: string): DoctorCheck[] {
     existsSync(join(targetDir, ".github", "PULL_REQUEST_TEMPLATE.md"));
   const hasCodeowners =
     existsSync(join(targetDir, ".github", "CODEOWNERS")) || existsSync(join(targetDir, "CODEOWNERS"));
+  const hasWorkflowProtection = checkWorkflowsForMergeProtection(join(targetDir, ".github", "workflows"));
 
-  if (hasPRTemplate && hasCodeowners) {
+  const protectionSignals = [hasPRTemplate, hasCodeowners, hasWorkflowProtection].filter(Boolean).length;
+
+  if (protectionSignals >= 2) {
     return [{ check: "Merge protection artifacts found", status: "pass", fix: "" }];
   }
-  if (hasPRTemplate || hasCodeowners) {
+  if (protectionSignals === 1) {
     return [
       {
         check: "Partial merge protection",
         status: "warn",
-        fix: "Add both PR template and CODEOWNERS for complete proof-of-work gates",
+        fix: "Add PR template, CODEOWNERS, or workflow-based branch protection for complete proof-of-work gates",
       },
     ];
   }

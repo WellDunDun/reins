@@ -101,7 +101,7 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
         action: "Define workflow configuration",
         description:
           "Create WORKFLOW.md with YAML frontmatter (concurrency, sandbox, hooks) and markdown body (agent prompt template). Versions agent behavior alongside code.",
-        automated: false,
+        automated: true,
       },
     ],
     success_criteria: "Most new code is written by agents, not humans.",
@@ -259,6 +259,8 @@ function hasMissingBaseScaffold(targetDir: string): boolean {
   const requiredArtifacts = [
     "AGENTS.md",
     "ARCHITECTURE.md",
+    "WORKFLOW.md",
+    "SPEC.md",
     "risk-policy.json",
     "docs/golden-principles.md",
     "docs/design-docs/index.md",
