@@ -1,6 +1,12 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { detectCliProject, detectMonorepoWorkspaces, scanWorkflowsForEnforcement } from "../detection";
+import {
+  checkWorkflowConfigForPattern,
+  checkWorkflowsForMergeProtection,
+  detectCliProject,
+  detectMonorepoWorkspaces,
+  scanWorkflowsForEnforcement,
+} from "../detection";
 import { findFiles } from "../filesystem";
 import type { AuditResult } from "../types";
 
@@ -28,6 +34,13 @@ export interface AuditRuntimeContext {
   hasGlobBasedRules: boolean;
   hierarchicalAgentContextCount: number;
   hasSkillsManifest: boolean;
+  hasWorkflowConfig: boolean;
+  hasSkillsDirectory: boolean;
+  hasIsolationPolicy: boolean;
+  hasConcurrencyLimits: boolean;
+  hasMergeProtection: boolean;
+  hasSpecDocument: boolean;
+  frameworksDetected: string[];
 }
 
 export function createAuditResult(projectName: string): AuditResult {
@@ -40,13 +53,14 @@ export function createAuditResult(projectName: string): AuditResult {
       architecture_enforcement: { score: 0, max: 3, findings: [] },
       agent_legibility: { score: 0, max: 4, findings: [] },
       golden_principles: { score: 0, max: 3, findings: [] },
-      agent_workflow: { score: 0, max: 4, findings: [] },
+      agent_workflow: { score: 0, max: 5, findings: [] },
       garbage_collection: { score: 0, max: 3, findings: [] },
     },
     total_score: 0,
-    max_score: 21,
+    max_score: 22,
     maturity_level: "L0",
     recommendations: [],
+    frameworks_detected: [],
   };
 }
 
@@ -122,6 +136,63 @@ export function buildAuditRuntimeContext(targetDir: string): AuditRuntimeContext
     existsSync(join(targetDir, ".claude", "skills")) ||
     existsSync(join(targetDir, ".cursor", "extensions"));
 
+  const hasWorkflowConfig =
+    existsSync(join(targetDir, "WORKFLOW.md")) ||
+    existsSync(join(targetDir, "workflow.yml")) ||
+    existsSync(join(targetDir, ".codex", "WORKFLOW.md"));
+
+  const skillsDirPaths = [
+    join(targetDir, ".codex", "skills"),
+    join(targetDir, ".claude", "skills"),
+    join(targetDir, ".claude", "commands"),
+    join(targetDir, "skills"),
+  ];
+  const hasSkillsDirectory = skillsDirPaths.some((d) => {
+    if (!existsSync(d)) return false;
+    try {
+      return readdirSync(d).length > 0;
+    } catch {
+      return false;
+    }
+  });
+
+  const hasIsolationPolicy =
+    existsSync(join(targetDir, "sandbox.json")) ||
+    existsSync(join(targetDir, ".sandbox")) ||
+    (hasWorkflowConfig && checkWorkflowConfigForPattern(targetDir, /sandbox|isolat|workspace.*root/i));
+
+  const hasConcurrencyLimits =
+    (hasWorkflowConfig && checkWorkflowConfigForPattern(targetDir, /max_concurrent|concurrency/i)) ||
+    (hasRiskPolicy && (() => {
+      try {
+        const content = readFileSync(join(targetDir, "risk-policy.json"), "utf-8");
+        return /concurrency|maxConcurrentAgents/i.test(content);
+      } catch {
+        return false;
+      }
+    })());
+
+  const hasMergeProtection =
+    existsSync(join(targetDir, ".github", "CODEOWNERS")) ||
+    existsSync(join(targetDir, "CODEOWNERS")) ||
+    checkWorkflowsForMergeProtection(workflowDir);
+
+  const hasSpecDocument =
+    existsSync(join(targetDir, "SPEC.md")) ||
+    existsSync(join(targetDir, "spec.md"));
+
+  const frameworksDetected: string[] = [];
+  if (existsSync(join(targetDir, ".codex")) || existsSync(join(targetDir, "WORKFLOW.md")))
+    frameworksDetected.push("symphony");
+  if (existsSync(join(targetDir, "CLAUDE.md")) || existsSync(join(targetDir, ".claude")))
+    frameworksDetected.push("claude-code");
+  if (existsSync(join(targetDir, ".cursor")))
+    frameworksDetected.push("cursor");
+  if (existsSync(join(targetDir, "conductor.json")))
+    frameworksDetected.push("conductor");
+  if (existsSync(join(targetDir, "CODEX.md")))
+    frameworksDetected.push("codex");
+
   return {
     targetDir,
     pkgJsonPath,
@@ -146,5 +217,12 @@ export function buildAuditRuntimeContext(targetDir: string): AuditRuntimeContext
     hasGlobBasedRules,
     hierarchicalAgentContextCount,
     hasSkillsManifest,
+    hasWorkflowConfig,
+    hasSkillsDirectory,
+    hasIsolationPolicy,
+    hasConcurrencyLimits,
+    hasMergeProtection,
+    hasSpecDocument,
+    frameworksDetected,
   };
 }
