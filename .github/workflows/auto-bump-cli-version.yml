@@ -51,7 +51,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add cli/reins/package.json package.json
-          git commit -m "chore: bump cli version to v${NEW_VERSION} [skip ci]" || exit 0
+          git commit -m "chore: bump cli version to v${NEW_VERSION}" || exit 0
           if [[ ! "$BRANCH_NAME" =~ ^[A-Za-z0-9._/-]+$ ]]; then
             echo "Invalid head ref: $BRANCH_NAME"
             exit 1
