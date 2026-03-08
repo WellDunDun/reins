@@ -127,7 +127,8 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
       {
         step: 3,
         action: "Add conditional context engineering",
-        description: "Create glob-based rule files (.cursor/rules/, .claude/rules/) and per-directory AGENTS.md for targeted agent context.",
+        description:
+          "Create glob-based rule files (.cursor/rules/, .claude/rules/) and per-directory AGENTS.md for targeted agent context.",
         automated: false,
       },
       {
@@ -184,7 +185,8 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
       {
         step: 4,
         action: "Declare agent tooling registry",
-        description: "Create MCP config (.claude/mcp.json or mcp.json) and skills manifest declaring available tools for agents.",
+        description:
+          "Create MCP config (.claude/mcp.json or mcp.json) and skills manifest declaring available tools for agents.",
         automated: false,
       },
       {

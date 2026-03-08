@@ -19,13 +19,14 @@ describe("runEvolve unit behavior", () => {
         architecture_enforcement: { score: 3, max: 3, findings: [] },
         agent_legibility: { score: 3, max: 4, findings: [] },
         golden_principles: { score: 3, max: 3, findings: [] },
-        agent_workflow: { score: 3, max: 4, findings: [] },
+        agent_workflow: { score: 3, max: 5, findings: [] },
         garbage_collection: { score: 2, max: 3, findings: [] },
       },
       total_score: 17,
-      max_score: 21,
+      max_score: 22,
       maturity_level: "L3: Full Outloop",
       recommendations: [],
+      frameworks_detected: [],
     };
 
     let output = "";

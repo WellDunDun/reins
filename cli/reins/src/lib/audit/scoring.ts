@@ -444,8 +444,9 @@ function detectZteSignals(result: AuditResult, ctx: AuditRuntimeContext): void {
       if (/auto-merge|mergify|kodiak/i.test(content)) {
         hasAutoMerge = true;
       }
-      const hasPushToMain =
-        /push:[\s\S]*?branches:[\s\S]*?(?:-\s*["']?main["']?|\[\s*["']?main["']?\s*\])/i.test(content);
+      const hasPushToMain = /push:[\s\S]*?branches:[\s\S]*?(?:-\s*["']?main["']?|\[\s*["']?main["']?\s*\])/i.test(
+        content,
+      );
       const hasDeploySignal = /\bdeploy(?:ment)?\b/i.test(content);
       const hasMergeDeploySignal = /merge[\s\S]*deploy|deploy[\s\S]*merge/i.test(content);
       if ((hasPushToMain && hasDeploySignal) || hasMergeDeploySignal) {
@@ -475,9 +476,7 @@ function scoreAgentWorkflowOrchestration(result: AuditResult, ctx: AuditRuntimeC
 
   if (orchestrationSignals >= 3) {
     result.scores.agent_workflow.score++;
-    result.scores.agent_workflow.findings.push(
-      `Orchestration readiness detected (${orchestrationSignals} signals)`,
-    );
+    result.scores.agent_workflow.findings.push(`Orchestration readiness detected (${orchestrationSignals} signals)`);
   } else if (orchestrationSignals >= 1) {
     result.scores.agent_workflow.findings.push(
       `Partial orchestration signals (${orchestrationSignals}/3 needed for point)`,

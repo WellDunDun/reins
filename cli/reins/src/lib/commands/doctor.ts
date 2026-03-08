@@ -163,9 +163,7 @@ function collectDoctorStructuralLintChecks(targetDir: string): DoctorCheck[] {
 }
 
 function collectDoctorWorkflowConfigCheck(targetDir: string): DoctorCheck[] {
-  const workflowConfigs = ["WORKFLOW.md", "workflow.yml", join(".codex", "WORKFLOW.md")].map((f) =>
-    join(targetDir, f),
-  );
+  const workflowConfigs = ["WORKFLOW.md", "workflow.yml", join(".codex", "WORKFLOW.md")].map((f) => join(targetDir, f));
   if (workflowConfigs.some(existsSync)) {
     return [{ check: "Workflow configuration found", status: "pass", fix: "" }];
   }
@@ -179,9 +177,7 @@ function collectDoctorWorkflowConfigCheck(targetDir: string): DoctorCheck[] {
 }
 
 function collectDoctorSkillsDirectoryCheck(targetDir: string): DoctorCheck[] {
-  const skillsDirs = [".codex/skills", ".claude/commands", ".claude/skills", "skills"].map((d) =>
-    join(targetDir, d),
-  );
+  const skillsDirs = [".codex/skills", ".claude/commands", ".claude/skills", "skills"].map((d) => join(targetDir, d));
   const hasNonEmptySkillsDir = skillsDirs.some((d) => {
     if (!existsSync(d)) return false;
     try {
