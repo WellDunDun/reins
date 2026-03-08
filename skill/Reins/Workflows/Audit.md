@@ -73,7 +73,7 @@ Score each dimension from 0 up to its max (dimensions have different maxes: RK 0
 | AGENTS.md exists and under 150 lines (hierarchical: per-package in monorepos) | +1 |
 | docs/ directory with indexed design docs (counts decisions in design-docs/index.md) | +1 |
 | Verification headers in docs (`<!-- Verified: DATE -->`) and execution plans versioned in-repo | +1 |
-| Conditional context engineering (glob-based rule files or 3+ hierarchical AGENTS.md files) | +1 |
+| Conditional context engineering (glob-based rule files or 3+ hierarchical context files: AGENTS.md and/or CLAUDE.md) | +1 |
 
 **Bonus findings:** Hierarchical AGENTS.md detected, verification header count, design decision count.
 
