@@ -16,6 +16,7 @@ export function runAudit(targetPath: string): AuditResult {
   const result = createAuditResult(basename(targetDir));
 
   applyAuditScoring(result, context);
+  result.frameworks_detected = context.frameworksDetected;
 
   result.total_score = Object.values(result.scores).reduce((sum, score) => sum + score.score, 0);
   result.maturity_level = resolveMaturityLevel(result.total_score);

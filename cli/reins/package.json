@@ -1,6 +1,6 @@
 {
   "name": "reins-cli",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Scaffold, audit, and evolve projects using the Harness Engineering methodology",
   "type": "module",
   "license": "MIT",

@@ -444,8 +444,9 @@ function detectZteSignals(result: AuditResult, ctx: AuditRuntimeContext): void {
       if (/auto-merge|mergify|kodiak/i.test(content)) {
         hasAutoMerge = true;
       }
-      const hasPushToMain =
-        /push:[\s\S]*?branches:[\s\S]*?(?:-\s*["']?main["']?|\[\s*["']?main["']?\s*\])/i.test(content);
+      const hasPushToMain = /push:[\s\S]*?branches:[\s\S]*?(?:-\s*["']?main["']?|\[\s*["']?main["']?\s*\])/i.test(
+        content,
+      );
       const hasDeploySignal = /\bdeploy(?:ment)?\b/i.test(content);
       const hasMergeDeploySignal = /merge[\s\S]*deploy|deploy[\s\S]*merge/i.test(content);
       if ((hasPushToMain && hasDeploySignal) || hasMergeDeploySignal) {
@@ -464,12 +465,32 @@ function detectZteSignals(result: AuditResult, ctx: AuditRuntimeContext): void {
   }
 }
 
+function scoreAgentWorkflowOrchestration(result: AuditResult, ctx: AuditRuntimeContext): void {
+  const orchestrationSignals = [
+    ctx.hasWorkflowConfig,
+    ctx.hasSkillsDirectory,
+    ctx.hasIsolationPolicy,
+    ctx.hasConcurrencyLimits,
+    ctx.hasMergeProtection,
+  ].filter(Boolean).length;
+
+  if (orchestrationSignals >= 3) {
+    result.scores.agent_workflow.score++;
+    result.scores.agent_workflow.findings.push(`Orchestration readiness detected (${orchestrationSignals} signals)`);
+  } else if (orchestrationSignals >= 1) {
+    result.scores.agent_workflow.findings.push(
+      `Partial orchestration signals (${orchestrationSignals}/3 needed for point)`,
+    );
+  }
+}
+
 function scoreAgentWorkflow(result: AuditResult, ctx: AuditRuntimeContext): void {
   scoreAgentWorkflowConfig(result, ctx);
   scoreAgentWorkflowGovernance(result, ctx);
   scoreAgentWorkflowCi(result, ctx);
   scoreAgentWorkflowBlueprints(result, ctx);
   detectZteSignals(result, ctx);
+  scoreAgentWorkflowOrchestration(result, ctx);
 }
 
 function hasActiveDocGardening(ctx: AuditRuntimeContext): boolean {
@@ -548,8 +569,8 @@ export function applyAuditScoring(result: AuditResult, ctx: AuditRuntimeContext)
 
 export function resolveMaturityLevel(totalScore: number): string {
   if (totalScore <= 5) return "L0: Manual";
-  if (totalScore <= 10) return "L1: Inloop";
-  if (totalScore <= 15) return "L2: Guided Outloop";
-  if (totalScore <= 18) return "L3: Full Outloop";
+  if (totalScore <= 11) return "L1: Inloop";
+  if (totalScore <= 16) return "L2: Guided Outloop";
+  if (totalScore <= 19) return "L3: Full Outloop";
   return "L4: Zero Touch";
 }

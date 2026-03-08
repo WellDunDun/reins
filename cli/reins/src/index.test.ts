@@ -183,7 +183,7 @@ describe("reins audit", () => {
 
     const result = JSON.parse(stdout);
     expect(result.total_score).toBe(0);
-    expect(result.max_score).toBe(21);
+    expect(result.max_score).toBe(22);
     expect(result.maturity_level).toBe("L0: Manual");
     expect(result.scores.repository_knowledge.score).toBe(0);
     expect(result.scores.architecture_enforcement.score).toBe(0);
@@ -268,7 +268,7 @@ describe("reins audit", () => {
     expect(result).toHaveProperty("max_score");
     expect(result).toHaveProperty("maturity_level");
     expect(result).toHaveProperty("recommendations");
-    expect(result.max_score).toBe(21);
+    expect(result.max_score).toBe(22);
   });
 
   test("fails on nonexistent directory", async () => {

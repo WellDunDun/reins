@@ -1,6 +1,12 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { detectCliProject, detectMonorepoWorkspaces, scanWorkflowsForEnforcement } from "../detection";
+import {
+  checkWorkflowConfigForPattern,
+  checkWorkflowsForMergeProtection,
+  detectCliProject,
+  detectMonorepoWorkspaces,
+  scanWorkflowsForEnforcement,
+} from "../detection";
 import { findFiles } from "../filesystem";
 import type { AuditResult } from "../types";
 
@@ -28,6 +34,13 @@ export interface AuditRuntimeContext {
   hasGlobBasedRules: boolean;
   hierarchicalAgentContextCount: number;
   hasSkillsManifest: boolean;
+  hasWorkflowConfig: boolean;
+  hasSkillsDirectory: boolean;
+  hasIsolationPolicy: boolean;
+  hasConcurrencyLimits: boolean;
+  hasMergeProtection: boolean;
+  hasSpecDocument: boolean;
+  frameworksDetected: string[];
 }
 
 export function createAuditResult(projectName: string): AuditResult {
@@ -40,13 +53,14 @@ export function createAuditResult(projectName: string): AuditResult {
       architecture_enforcement: { score: 0, max: 3, findings: [] },
       agent_legibility: { score: 0, max: 4, findings: [] },
       golden_principles: { score: 0, max: 3, findings: [] },
-      agent_workflow: { score: 0, max: 4, findings: [] },
+      agent_workflow: { score: 0, max: 5, findings: [] },
       garbage_collection: { score: 0, max: 3, findings: [] },
     },
     total_score: 0,
-    max_score: 21,
+    max_score: 22,
     maturity_level: "L0",
     recommendations: [],
+    frameworks_detected: [],
   };
 }
 
@@ -59,6 +73,54 @@ export function readVerifiedDocs(targetDir: string): string[] {
       return false;
     }
   });
+}
+
+function detectAgentCommands(targetDir: string): boolean {
+  const commandsDir = join(targetDir, ".claude", "commands");
+  if (!existsSync(commandsDir)) return false;
+  try {
+    return readdirSync(commandsDir).length > 0;
+  } catch {
+    return false;
+  }
+}
+
+function detectNonEmptySkillsDirectory(targetDir: string): boolean {
+  const skillsDirPaths = [
+    join(targetDir, ".codex", "skills"),
+    join(targetDir, ".claude", "skills"),
+    join(targetDir, ".claude", "commands"),
+    join(targetDir, "skills"),
+  ];
+  return skillsDirPaths.some((d) => {
+    if (!existsSync(d)) return false;
+    try {
+      return readdirSync(d).length > 0;
+    } catch {
+      return false;
+    }
+  });
+}
+
+function detectConcurrencyLimits(targetDir: string, hasWorkflowConfig: boolean, hasRiskPolicy: boolean): boolean {
+  if (hasWorkflowConfig && checkWorkflowConfigForPattern(targetDir, /max_concurrent|concurrency/i)) return true;
+  if (!hasRiskPolicy) return false;
+  try {
+    const content = readFileSync(join(targetDir, "risk-policy.json"), "utf-8");
+    return /concurrency|maxConcurrentAgents/i.test(content);
+  } catch {
+    return false;
+  }
+}
+
+function detectFrameworks(targetDir: string): string[] {
+  const detected: string[] = [];
+  if (existsSync(join(targetDir, ".codex")) || existsSync(join(targetDir, "WORKFLOW.md"))) detected.push("symphony");
+  if (existsSync(join(targetDir, "CLAUDE.md")) || existsSync(join(targetDir, ".claude"))) detected.push("claude-code");
+  if (existsSync(join(targetDir, ".cursor"))) detected.push("cursor");
+  if (existsSync(join(targetDir, "conductor.json"))) detected.push("conductor");
+  if (existsSync(join(targetDir, "CODEX.md"))) detected.push("codex");
+  return detected;
 }
 
 export function buildAuditRuntimeContext(targetDir: string): AuditRuntimeContext {
@@ -85,16 +147,7 @@ export function buildAuditRuntimeContext(targetDir: string): AuditRuntimeContext
   const isCliRepo = detectCliProject(targetDir, pkgJsonPath);
   const verifiedDocs = readVerifiedDocs(targetDir);
   const hasCleanupDocs = existsSync(join(targetDir, "docs", "exec-plans", "tech-debt-tracker.md"));
-
-  const commandsDir = join(targetDir, ".claude", "commands");
-  let hasAgentCommands = false;
-  if (existsSync(commandsDir)) {
-    try {
-      hasAgentCommands = readdirSync(commandsDir).length > 0;
-    } catch {
-      // ignore read errors
-    }
-  }
+  const hasAgentCommands = detectAgentCommands(targetDir);
 
   const hasSessionOrchestrator =
     existsSync(join(targetDir, ".flow")) ||
@@ -108,19 +161,36 @@ export function buildAuditRuntimeContext(targetDir: string): AuditRuntimeContext
     existsSync(join(targetDir, "mcp.json"));
 
   const hasGlobBasedRules =
-    existsSync(join(targetDir, ".cursor", "rules")) ||
-    existsSync(join(targetDir, ".claude", "rules"));
+    existsSync(join(targetDir, ".cursor", "rules")) || existsSync(join(targetDir, ".claude", "rules"));
 
-  const agentContextFiles = [
-    ...findFiles(targetDir, /^AGENTS\.md$/, 3),
-    ...findFiles(targetDir, /^CLAUDE\.md$/, 3),
-  ];
+  const agentContextFiles = [...findFiles(targetDir, /^AGENTS\.md$/, 3), ...findFiles(targetDir, /^CLAUDE\.md$/, 3)];
   const hierarchicalAgentContextCount = agentContextFiles.length;
 
   const hasSkillsManifest =
     existsSync(join(targetDir, "skills.json")) ||
     existsSync(join(targetDir, ".claude", "skills")) ||
     existsSync(join(targetDir, ".cursor", "extensions"));
+
+  const hasWorkflowConfig =
+    existsSync(join(targetDir, "WORKFLOW.md")) ||
+    existsSync(join(targetDir, "workflow.yml")) ||
+    existsSync(join(targetDir, ".codex", "WORKFLOW.md"));
+
+  const hasSkillsDirectory = detectNonEmptySkillsDirectory(targetDir);
+
+  const hasIsolationPolicy =
+    existsSync(join(targetDir, "sandbox.json")) ||
+    existsSync(join(targetDir, ".sandbox")) ||
+    (hasWorkflowConfig && checkWorkflowConfigForPattern(targetDir, /sandbox|isolat|workspace.*root/i));
+
+  const hasConcurrencyLimits = detectConcurrencyLimits(targetDir, hasWorkflowConfig, hasRiskPolicy);
+
+  const hasMergeProtection =
+    existsSync(join(targetDir, ".github", "CODEOWNERS")) ||
+    existsSync(join(targetDir, "CODEOWNERS")) ||
+    checkWorkflowsForMergeProtection(workflowDir);
+
+  const hasSpecDocument = existsSync(join(targetDir, "SPEC.md")) || existsSync(join(targetDir, "spec.md"));
 
   return {
     targetDir,
@@ -146,5 +216,12 @@ export function buildAuditRuntimeContext(targetDir: string): AuditRuntimeContext
     hasGlobBasedRules,
     hierarchicalAgentContextCount,
     hasSkillsManifest,
+    hasWorkflowConfig,
+    hasSkillsDirectory,
+    hasIsolationPolicy,
+    hasConcurrencyLimits,
+    hasMergeProtection,
+    hasSpecDocument,
+    frameworksDetected: detectFrameworks(targetDir),
   };
 }

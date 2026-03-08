@@ -32,13 +32,16 @@ Use Reins before manual scaffolding:
     "docs/design-docs/index.md",
     "docs/design-docs/core-beliefs.md",
     "docs/product-specs/index.md",
-    "docs/exec-plans/tech-debt-tracker.md"
+    "docs/exec-plans/tech-debt-tracker.md",
+    "WORKFLOW.md",
+    "SPEC.md"
   ],
   "next_steps": [
     "Edit AGENTS.md — fill in the project description",
     "Edit ARCHITECTURE.md — define your business domains",
     "Review risk-policy.json — set tiers and docs drift rules for your repo",
     "Edit docs/golden-principles.md — customize rules for your project",
+    "Review WORKFLOW.md — customize agent behavior and orchestration settings",
     "Run 'reins audit .' to see your starting score"
   ]
 }

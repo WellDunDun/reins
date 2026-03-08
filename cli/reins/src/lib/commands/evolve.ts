@@ -96,6 +96,13 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
         description: "Describe tasks in natural language. Agents write all code, tests, and docs.",
         automated: false,
       },
+      {
+        step: 6,
+        action: "Define workflow configuration",
+        description:
+          "Create WORKFLOW.md with YAML frontmatter (concurrency, sandbox, hooks) and markdown body (agent prompt template). Versions agent behavior alongside code.",
+        automated: true,
+      },
     ],
     success_criteria: "Most new code is written by agents, not humans.",
   },
@@ -120,7 +127,8 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
       {
         step: 3,
         action: "Add conditional context engineering",
-        description: "Create glob-based rule files (.cursor/rules/, .claude/rules/) and per-directory AGENTS.md for targeted agent context.",
+        description:
+          "Create glob-based rule files (.cursor/rules/, .claude/rules/) and per-directory AGENTS.md for targeted agent context.",
         automated: false,
       },
       {
@@ -139,6 +147,13 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
         step: 6,
         action: "Build escalation paths",
         description: "Clear criteria for when to involve humans vs. when agents can proceed autonomously.",
+        automated: false,
+      },
+      {
+        step: 7,
+        action: "Create composable skills directory",
+        description:
+          "Add .codex/skills/ or .claude/commands/ with markdown-defined tasks that compose hierarchically (e.g., 'land' delegates to 'commit', 'push', 'pull').",
         automated: false,
       },
     ],
@@ -170,7 +185,8 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
       {
         step: 4,
         action: "Declare agent tooling registry",
-        description: "Create MCP config (.claude/mcp.json or mcp.json) and skills manifest declaring available tools for agents.",
+        description:
+          "Create MCP config (.claude/mcp.json or mcp.json) and skills manifest declaring available tools for agents.",
         automated: false,
       },
       {
@@ -191,6 +207,13 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
         description: "Link code changes to required doc updates via risk-policy.json watchPaths and docsDriftRules.",
         automated: false,
       },
+      {
+        step: 8,
+        action: "Implement workspace isolation policy",
+        description:
+          "Define per-issue sandbox boundaries, concurrency limits, and deterministic workspace creation. Prevents cross-contamination between concurrent agent runs.",
+        automated: false,
+      },
     ],
     success_criteria: "Codebase improves in quality without human intervention.",
   },
@@ -198,9 +221,9 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
 
 function resolveCurrentLevelKey(totalScore: number): LevelKey {
   if (totalScore <= 5) return "L0";
-  if (totalScore <= 10) return "L1";
-  if (totalScore <= 15) return "L2";
-  if (totalScore <= 18) return "L3";
+  if (totalScore <= 11) return "L1";
+  if (totalScore <= 16) return "L2";
+  if (totalScore <= 19) return "L3";
   return "L4";
 }
 
@@ -238,6 +261,8 @@ function hasMissingBaseScaffold(targetDir: string): boolean {
   const requiredArtifacts = [
     "AGENTS.md",
     "ARCHITECTURE.md",
+    "WORKFLOW.md",
+    "SPEC.md",
     "risk-policy.json",
     "docs/golden-principles.md",
     "docs/design-docs/index.md",

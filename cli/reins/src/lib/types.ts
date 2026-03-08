@@ -17,9 +17,10 @@ export interface AuditResult {
     garbage_collection: AuditScore;
   };
   total_score: number;
-  max_score: 21;
+  max_score: 22;
   maturity_level: string;
   recommendations: string[];
+  frameworks_detected: string[];
 }
 
 export interface InitOptions {

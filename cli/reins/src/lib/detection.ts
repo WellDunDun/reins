@@ -132,6 +132,36 @@ function detectTestSignals(targetDir: string): string[] {
   return [];
 }
 
+export function checkWorkflowConfigForPattern(targetDir: string, pattern: RegExp): boolean {
+  const workflowFiles = ["WORKFLOW.md", join(".codex", "WORKFLOW.md"), "workflow.yml"];
+  const safePattern = new RegExp(pattern.source, pattern.flags.replace(/[gy]/g, ""));
+  for (const file of workflowFiles) {
+    const filePath = join(targetDir, file);
+    if (!existsSync(filePath)) continue;
+    try {
+      const content = readFileSync(filePath, "utf-8");
+      if (safePattern.test(content)) return true;
+    } catch {
+      // ignore read errors
+    }
+  }
+  return false;
+}
+
+export function checkWorkflowsForMergeProtection(workflowDir: string): boolean {
+  if (!existsSync(workflowDir)) return false;
+  try {
+    const files = readdirSync(workflowDir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
+    for (const file of files) {
+      const content = readFileSync(join(workflowDir, file), "utf-8");
+      if (/required.*review|require.*approval|branch.*protect/i.test(content)) return true;
+    }
+  } catch {
+    // no workflows
+  }
+  return false;
+}
+
 export function detectCliDiagnosabilitySignals(targetDir: string): string[] {
   const signals = new Set<string>();
   const probes = [

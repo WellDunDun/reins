@@ -8,6 +8,7 @@ Registry of all design documents with verification status.
 | ci-enforcement-and-risk-policy.md | Current | 2026-02-22 | Team |
 | ecosystem-positioning.md | Current | 2026-02-22 | Team |
 | skill-evals-and-shell-boundaries.md | Current | 2026-02-23 | Team |
+| symphony-integration.md | Current | 2026-03-08 | Team |
 
 ## Verification Schedule
 

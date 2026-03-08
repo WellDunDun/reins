@@ -15,7 +15,7 @@ For scoring context, pair with audit:
 
 | Tool | Purpose | Output |
 |------|---------|--------|
-| **audit** | Quantitative maturity scoring (0-18) | Scores, findings, maturity level |
+| **audit** | Quantitative maturity scoring (0-22) | Scores, findings, maturity level |
 | **doctor** | Actionable health checks | check/status/fix entries + summary |
 
 Use **doctor** for remediation details. Use **audit** for maturity scoring.
@@ -58,6 +58,9 @@ Doctor checks include:
 - Linter and CI signals
 - Risk policy (`risk-policy.json`)
 - Verification headers in docs
+- Workflow configuration (`WORKFLOW.md` or equivalent)
+- Skills/commands directory presence
+- Merge protection artifacts (branch rules, CODEOWNERS)
 - Optional monorepo/structure checks (hierarchical AGENTS, structural lint scripts)
 
 Notes:

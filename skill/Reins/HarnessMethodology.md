@@ -10,7 +10,7 @@ Build and ship software with **zero manually-written code**. Humans design envir
 
 Reins turns the methodology into four operational commands:
 - `reins init` — scaffold repository knowledge and governance artifacts
-- `reins audit` — score maturity across six dimensions (0-18)
+- `reins audit` — score maturity across six dimensions (0-22)
 - `reins doctor` — produce actionable pass/fail/warn health checks
 - `reins evolve` — generate step-by-step upgrades to the next level
 
