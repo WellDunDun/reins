@@ -162,6 +162,64 @@ function collectDoctorStructuralLintChecks(targetDir: string): DoctorCheck[] {
   ];
 }
 
+function collectDoctorWorkflowConfigCheck(targetDir: string): DoctorCheck[] {
+  const workflowConfigs = ["WORKFLOW.md", "workflow.yml"].map((f) => join(targetDir, f));
+  if (workflowConfigs.some(existsSync)) {
+    return [{ check: "Workflow configuration found", status: "pass", fix: "" }];
+  }
+  return [
+    {
+      check: "No workflow configuration",
+      status: "warn",
+      fix: "Create WORKFLOW.md to define agent behavior as a versioned, reviewable artifact",
+    },
+  ];
+}
+
+function collectDoctorSkillsDirectoryCheck(targetDir: string): DoctorCheck[] {
+  const skillsDirs = [".codex/skills", ".claude/commands", ".claude/skills", "skills"].map((d) =>
+    join(targetDir, d),
+  );
+  if (skillsDirs.some(existsSync)) {
+    return [{ check: "Skills/commands directory found", status: "pass", fix: "" }];
+  }
+  return [
+    {
+      check: "No skills directory",
+      status: "warn",
+      fix: "Create a skills directory (.codex/skills/ or .claude/commands/) with composable task definitions",
+    },
+  ];
+}
+
+function collectDoctorMergeProtectionCheck(targetDir: string): DoctorCheck[] {
+  const hasPRTemplate =
+    existsSync(join(targetDir, ".github", "pull_request_template.md")) ||
+    existsSync(join(targetDir, ".github", "PULL_REQUEST_TEMPLATE.md"));
+  const hasCodeowners =
+    existsSync(join(targetDir, ".github", "CODEOWNERS")) || existsSync(join(targetDir, "CODEOWNERS"));
+
+  if (hasPRTemplate && hasCodeowners) {
+    return [{ check: "Merge protection artifacts found", status: "pass", fix: "" }];
+  }
+  if (hasPRTemplate || hasCodeowners) {
+    return [
+      {
+        check: "Partial merge protection",
+        status: "warn",
+        fix: "Add both PR template and CODEOWNERS for complete proof-of-work gates",
+      },
+    ];
+  }
+  return [
+    {
+      check: "No merge protection artifacts",
+      status: "warn",
+      fix: "Add .github/pull_request_template.md and CODEOWNERS for proof-of-work validation",
+    },
+  ];
+}
+
 export function runDoctor(targetPath: string): void {
   const targetDir = resolve(targetPath);
   if (!existsSync(targetDir)) {
@@ -179,6 +237,9 @@ export function runDoctor(targetPath: string): void {
     ...collectDoctorVerificationChecks(targetDir),
     ...collectDoctorHierarchicalAgentsCheck(targetDir),
     ...collectDoctorStructuralLintChecks(targetDir),
+    ...collectDoctorWorkflowConfigCheck(targetDir),
+    ...collectDoctorSkillsDirectoryCheck(targetDir),
+    ...collectDoctorMergeProtectionCheck(targetDir),
   ];
 
   const passed = checks.filter((check) => check.status === "pass").length;
