@@ -14,7 +14,7 @@ Layer 4: AGENT INFRASTRUCTURE
 
 Layer 3: SESSION EXECUTION
          How agents execute work within a single coding session.
-         Tools: GSD, Flow-Next, custom prompt chains.
+         Tools: GSD, Flow-Next, Symphony, custom prompt chains.
          Problem solved: context rot, task decomposition, verification.
 
 Layer 2: REPO READINESS
@@ -45,7 +45,7 @@ Once installed, the agent can discover the Reins workflows and run the CLI direc
 
 **Core operations:**
 - `reins init` — scaffold the full harness engineering structure
-- `reins audit` — score the repo on 6 dimensions (0-18)
+- `reins audit` — score the repo on 6 dimensions (0-22)
 - `reins evolve` — roadmap to the next maturity level
 - `reins doctor` — health check with prescriptive fixes
 
@@ -87,10 +87,25 @@ Repository: https://github.com/gmickel/flow-next-opencode
 
 **Philosophy:** "Plan first, work second." Specifications drive decomposition before implementation begins.
 
+### Symphony (OpenAI)
+
+Repository: https://github.com/openai/symphony
+
+**Approach:** Conductor-pattern orchestration built in Elixir on the BEAM VM. Long-running implementation runs with fault-tolerant agent supervision, composable skills, and proof-of-work validation before merge.
+
+**Key concepts:**
+- `WORKFLOW.md` defines agent behavior as a versioned, reviewable artifact
+- `.codex/skills/` provides composable, hierarchical task definitions
+- Deterministic per-issue workspace isolation prevents cross-contamination
+- Proof-of-work gates (CI + review + walkthrough) before any merge
+- Erlang/OTP supervision trees auto-restart failed agents with error context
+
+**Philosophy:** "Workflow-embedded AI with human-led control." Autonomous agents carry out complex end-to-end coding tasks while humans and corporate processes remain central to decision-making.
+
 ## Why They're Complementary
 
-| Concern | Reins | GSD / Flow-Next |
-|---------|-------|-----------------|
+| Concern | Reins | GSD / Flow-Next / Symphony |
+|---------|-------|----------------------------|
 | Layer | Repository structure | Session execution |
 | Question answered | Is this repo ready for agents? | How do agents execute work right now? |
 | When you use it | Once per repo, then evolve | Every coding session |
@@ -110,7 +125,7 @@ Stripe's Minions system operates at Layer 3+4 simultaneously — orchestrating a
 reins init .                              Scaffold structure
 reins audit .                             Measure readiness
 reins evolve .                            Level up maturity
-  + GSD or Flow-Next                      Execute coding sessions
+  + GSD or Flow-Next or Symphony           Execute coding sessions
   + Minions / E2B / Modal                 Agent infrastructure
   + CI enforcement of golden principles   Continuous quality
   + Background garbage collection agents  Continuous cleanup

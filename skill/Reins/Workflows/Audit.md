@@ -18,16 +18,17 @@ For remediation detail, pair with doctor:
   "project": "project-name",
   "timestamp": "2026-02-23T12:39:57.977Z",
   "scores": {
-    "repository_knowledge": { "score": 3, "max": 3, "findings": ["AGENTS.md exists (56 lines)", "..."] },
+    "repository_knowledge": { "score": 4, "max": 4, "findings": ["AGENTS.md exists (56 lines)", "..."] },
     "architecture_enforcement": { "score": 3, "max": 3, "findings": ["..."] },
-    "agent_legibility": { "score": 3, "max": 3, "findings": ["..."] },
+    "agent_legibility": { "score": 4, "max": 4, "findings": ["..."] },
     "golden_principles": { "score": 3, "max": 3, "findings": ["..."] },
-    "agent_workflow": { "score": 3, "max": 3, "findings": ["..."] },
+    "agent_workflow": { "score": 5, "max": 5, "findings": ["..."] },
     "garbage_collection": { "score": 3, "max": 3, "findings": ["..."] }
   },
-  "total_score": 18,
-  "max_score": 18,
-  "maturity_level": "L4: Self-Correcting",
+  "total_score": 22,
+  "max_score": 22,
+  "maturity_level": "L4: Zero Touch",
+  "frameworks_detected": ["next.js", "tailwind"],
   "recommendations": ["Project is well-structured. Consider evolving to next maturity level."]
 }
 ```
@@ -38,8 +39,8 @@ For remediation detail, pair with doctor:
 
 ```bash
 result=$(cd cli/reins && bun src/index.ts audit <path>)
-# Parse: .total_score (integer 0-18)
-# Parse: .maturity_level (string like "L4: Self-Correcting")
+# Parse: .total_score (integer 0-22)
+# Parse: .maturity_level (string like "L4: Zero Touch")
 ```
 
 ### Identify Weakest Dimensions
@@ -58,19 +59,21 @@ result=$(cd cli/reins && bun src/index.ts audit <path>)
 
 ## Audit Dimensions
 
-Score each dimension 0-3:
+Score each dimension from 0 up to its max (dimensions have different maxes: RK 0-4, AE 0-3, AL 0-4, GP 0-3, AW 0-5, GC 0-3):
 - **0** = Not present
 - **1** = Minimal/ad-hoc
 - **2** = Structured but incomplete
 - **3** = Fully implemented and enforced
+- **4-5** = Extended maturity signals (dimensions with higher max only)
 
-### 1. Repository Knowledge (0-3)
+### 1. Repository Knowledge (0-4)
 
 | Check | Points |
 |-------|--------|
 | AGENTS.md exists and under 150 lines (hierarchical: per-package in monorepos) | +1 |
 | docs/ directory with indexed design docs (counts decisions in design-docs/index.md) | +1 |
 | Verification headers in docs (`<!-- Verified: DATE -->`) and execution plans versioned in-repo | +1 |
+| Product specs versioned in-repo (`docs/product-specs/`) with index | +1 |
 
 **Bonus findings:** Hierarchical AGENTS.md detected, verification header count, design decision count.
 
@@ -84,13 +87,14 @@ Score each dimension 0-3:
 
 **Bonus findings:** Linter depth details, enforcement signal count.
 
-### 3. Agent Legibility (0-3)
+### 3. Agent Legibility (0-4)
 
 | Check | Points |
 |-------|--------|
 | App bootable per worktree (monorepo-aware: detects workspace packages, checks per-workspace bootability) | +1 |
 | Observability accessible to agents (services: Sentry/Vercel/Netlify/Docker; CLIs: diagnosability signals like doctor/help commands) | +1 |
 | Boring tech stack, minimal opaque dependencies (monorepo-aware: per-workspace average, threshold <20 single or <30 avg) | +1 |
+| Structured command output and deterministic error metadata for agent consumption | +1 |
 
 **Bonus findings:** Monorepo workspace count, dependency count/average, diagnosability signals.
 
@@ -104,13 +108,15 @@ Score each dimension 0-3:
 
 **Bonus findings:** Principle count, anti-patterns detected, CI gate count.
 
-### 5. Agent Workflow (0-3)
+### 5. Agent Workflow (0-5)
 
 | Check | Points |
 |-------|--------|
 | Agent config present (CLAUDE.md, conductor.json, .cursor, AGENTS.md) | +1 |
 | Workflow signals (risk-policy.json, PR template, issue templates) | +1 |
 | CI quality: 2+ distinct enforcement steps in workflows | +1 |
+| Agent blueprints or persona definitions present | +1 |
+| Orchestration readiness: 3+ signals from (workflow config, skills directory, isolation policy, concurrency limits, merge protection) | +1 |
 
 **Note:** `actions/checkout` does NOT count as an enforcement gate.
 
@@ -126,17 +132,17 @@ Score each dimension 0-3:
 
 | Score | Level | Description |
 |-------|-------|-------------|
-| 0-4 | **L0: Manual** | Traditional engineering, no agent infrastructure |
-| 5-8 | **L1: Assisted** | Agents help, but humans still write code |
-| 9-13 | **L2: Steered** | Humans steer, agents execute most code |
-| 14-16 | **L3: Autonomous** | Agents handle full lifecycle with human oversight |
-| 17-18 | **L4: Self-Correcting** | Agents maintain, clean, and evolve the system |
+| 0-5 | **L0: Manual** | Traditional engineering, no agent infrastructure |
+| 6-11 | **L1: Inloop** | Agents help, but humans still write code |
+| 12-16 | **L2: Guided Outloop** | Humans steer, agents execute most code |
+| 17-19 | **L3: Full Outloop** | Agents handle full lifecycle with human oversight |
+| 20-22 | **L4: Zero Touch** | Agents maintain, clean, and evolve the system |
 
 ## Steps
 
 1. Run `reins audit <path>` and capture JSON output
 2. Parse `.total_score` and `.maturity_level` for summary
-3. Identify weakest dimensions: any `.scores.*.score < 3`
+3. Identify weakest dimensions: any `.scores.*.score < .scores.*.max`
 4. Read `.scores.*.findings` arrays for evidence of what was detected
 5. Present top 3 actionable recommendations from `.recommendations`
 6. If remediation needed, run `reins doctor <path>` for prescriptive fixes

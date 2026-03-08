@@ -21,9 +21,9 @@ Run audit first (or let evolve run it internally) to determine current level.
 {
   "command": "evolve",
   "project": "project-name",
-  "current_level": "L1: Assisted",
+  "current_level": "L1: Inloop",
   "current_score": 8,
-  "next_level": "L2: Steered",
+  "next_level": "L2: Guided Outloop",
   "goal": "Shift from human-writes-code to human-steers-agent",
   "steps": [
     {
@@ -67,9 +67,9 @@ Treat `--apply` as scaffold assist, not full autonomous evolution.
 ## Evolution Paths
 
 - **L0 -> L1**: establish baseline repo map/docs/architecture and first agent loop.
-- **L1 -> L2**: enforce golden principles and shift to prompt-first steering.
-- **L2 -> L3**: add policy-as-code, stronger enforcement, and autonomous delivery loops.
-- **L3 -> L4**: add active drift detection, quality grading, and continuous cleanup.
+- **L1 -> L2**: enforce golden principles, shift to prompt-first steering, and add workflow configuration.
+- **L2 -> L3**: add policy-as-code, stronger enforcement, autonomous delivery loops, and skills directory.
+- **L3 -> L4**: add active drift detection, quality grading, continuous cleanup, and workspace isolation.
 
 ## Steps
 

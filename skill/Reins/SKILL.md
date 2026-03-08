@@ -19,7 +19,7 @@ Do not re-implement CLI logic in skill instructions. Always run commands and par
 
 Use this skill when the user asks to:
 - Scaffold repository readiness artifacts (`AGENTS.md`, `ARCHITECTURE.md`, `docs/`, `risk-policy.json`)
-- Audit or score agent-readiness/maturity (0-18, maturity levels, weakest dimensions)
+- Audit or score agent-readiness/maturity (0-22, maturity levels, weakest dimensions)
 - Diagnose readiness gaps with `doctor` (pass/fail/warn health checks with prescriptive fixes)
 - Evolve the repository to the next Reins maturity level
 - Improve docs-drift/policy-as-code enforcement tied to Reins outputs
@@ -56,7 +56,7 @@ All Reins commands output deterministic JSON. **Always parse JSON output** — n
 # Scaffold harness engineering structure
 reins init <path> [--name <name>] [--force] [--pack <auto|agent-factory>]
 
-# Score maturity across 6 dimensions (0-18)
+# Score maturity across 6 dimensions (0-22)
 reins audit <path>
 
 # Health check with prescriptive fixes
@@ -73,11 +73,11 @@ reins help
 
 | Score | Level | Description |
 |-------|-------|-------------|
-| 0-4 | **L0: Manual** | Traditional engineering, no agent infrastructure |
-| 5-8 | **L1: Assisted** | Agents help, but humans still write code |
-| 9-13 | **L2: Steered** | Humans steer, agents execute most code |
-| 14-16 | **L3: Autonomous** | Agents handle full lifecycle with human oversight |
-| 17-18 | **L4: Self-Correcting** | Agents maintain, clean, and evolve the system |
+| 0-5 | **L0: Manual** | Traditional engineering, no agent infrastructure |
+| 6-11 | **L1: Inloop** | Agents help, but humans still write code |
+| 12-16 | **L2: Guided Outloop** | Humans steer, agents execute most code |
+| 17-19 | **L3: Full Outloop** | Agents handle full lifecycle with human oversight |
+| 20-22 | **L4: Zero Touch** | Agents maintain, clean, and evolve the system |
 
 ## Core Reins Principles
 
