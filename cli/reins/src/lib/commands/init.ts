@@ -15,7 +15,9 @@ import {
   goldenPrinciplesTemplate,
   productSpecsIndexTemplate,
   riskPolicyTemplate,
+  specMdTemplate,
   techDebtTrackerTemplate,
+  workflowMdTemplate,
 } from "../templates";
 import type { InitOptions } from "../types";
 
@@ -92,6 +94,8 @@ function createBaseFiles(
     { path: "docs/design-docs/core-beliefs.md", content: coreBeliefsTemplate() },
     { path: "docs/product-specs/index.md", content: productSpecsIndexTemplate() },
     { path: "docs/exec-plans/tech-debt-tracker.md", content: techDebtTrackerTemplate() },
+    { path: "WORKFLOW.md", content: workflowMdTemplate(projectName) },
+    { path: "SPEC.md", content: specMdTemplate(projectName) },
   ];
 
   for (const file of files) {
@@ -114,6 +118,7 @@ function buildNextSteps(
     "Review risk-policy.json — set tiers and docs drift rules for your repo",
     "Edit docs/golden-principles.md — customize rules for your project",
     "Run 'reins audit .' to see your starting score",
+    "Review WORKFLOW.md — customize agent behavior and orchestration settings",
   ];
 
   if (selectedPack === "agent-factory") {

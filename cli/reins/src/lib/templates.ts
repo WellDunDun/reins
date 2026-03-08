@@ -295,6 +295,55 @@ export function riskPolicyTemplate(pack: AutomationPack = "none"): string {
 `;
 }
 
+export function workflowMdTemplate(projectName: string): string {
+  return `---
+# Workflow configuration for ${projectName}
+# This file defines agent behavior as a versioned, reviewable artifact.
+# See: https://github.com/openai/symphony for the WORKFLOW.md pattern.
+
+workspace:
+  root: .
+  # sandbox: true  # Enable per-issue workspace isolation
+
+concurrency:
+  max_concurrent_agents: 2
+
+hooks: {}
+  # after_create: []
+---
+
+# Agent Instructions
+
+<!-- Agent prompt template goes here. This is the system prompt sent to agents at session start. -->
+
+## Constraints
+
+- All changes must pass CI before merge
+- Follow golden principles documented in docs/golden-principles.md
+- Respect ARCHITECTURE.md dependency direction rules
+`;
+}
+
+export function specMdTemplate(projectName: string): string {
+  return `# ${projectName} Specification
+
+<!-- Language-agnostic behavioral specification. -->
+<!-- Defines what the system does, not how it's implemented. -->
+
+## Overview
+
+[Describe the system's purpose and core behavior]
+
+## Invariants
+
+[List properties that must always hold true]
+
+## Interfaces
+
+[Define the system's external contract]
+`;
+}
+
 function agentFactoryLintStructureScriptTemplate(): string {
   return `#!/usr/bin/env node
 import { readdirSync, readFileSync, statSync } from "node:fs";
