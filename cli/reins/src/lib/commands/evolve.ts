@@ -198,9 +198,9 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
 
 function resolveCurrentLevelKey(totalScore: number): LevelKey {
   if (totalScore <= 5) return "L0";
-  if (totalScore <= 10) return "L1";
-  if (totalScore <= 15) return "L2";
-  if (totalScore <= 18) return "L3";
+  if (totalScore <= 11) return "L1";
+  if (totalScore <= 16) return "L2";
+  if (totalScore <= 19) return "L3";
   return "L4";
 }
 
