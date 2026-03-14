@@ -10,15 +10,21 @@ function scoreRepositoryAgents(result: AuditResult, ctx: AuditRuntimeContext): v
   const agentsMdPath = join(ctx.targetDir, "AGENTS.md");
   if (existsSync(agentsMdPath)) {
     const lines = readFileSync(agentsMdPath, "utf-8").split("\n").length;
-    if (lines <= 150) {
+    if (lines <= 60) {
       result.scores.repository_knowledge.score++;
-      result.scores.repository_knowledge.findings.push(`AGENTS.md exists (${lines} lines)`);
+      result.scores.repository_knowledge.findings.push(`AGENTS.md exists (${lines} lines, ideal: <60)`);
+    } else if (lines <= 100) {
+      result.scores.repository_knowledge.score++;
+      result.scores.repository_knowledge.findings.push(`AGENTS.md exists (${lines} lines, good: <100)`);
+    } else if (lines <= 150) {
+      result.scores.repository_knowledge.score++;
+      result.scores.repository_knowledge.findings.push(`AGENTS.md exists (${lines} lines, acceptable — consider trimming to <60)`);
     } else {
-      result.scores.repository_knowledge.findings.push(`AGENTS.md exists but too long (${lines} lines, target: <150)`);
+      result.scores.repository_knowledge.findings.push(`AGENTS.md exists but too long (${lines} lines, target: <60)`);
     }
   } else {
     result.scores.repository_knowledge.findings.push("AGENTS.md missing");
-    result.recommendations.push("Create AGENTS.md as a concise map (~100 lines) — run 'reins init .'");
+    result.recommendations.push("Create AGENTS.md as a concise map (<60 lines) — run 'reins init .'");
   }
 
   const allAgentsMd = findFiles(ctx.targetDir, /^AGENTS\.md$/);
@@ -313,6 +319,15 @@ function scoreToolRegistry(result: AuditResult, ctx: AuditRuntimeContext): void 
   }
 }
 
+function scoreBackPressure(result: AuditResult, ctx: AuditRuntimeContext): void {
+  if (ctx.hasBackPressure) {
+    result.scores.agent_legibility.score++;
+    result.scores.agent_legibility.findings.push("Back-pressure mechanisms detected (test + typecheck scripts)");
+  } else {
+    result.scores.agent_legibility.findings.push("No back-pressure mechanisms (add test + typecheck scripts)");
+  }
+}
+
 function scoreAgentLegibility(result: AuditResult, ctx: AuditRuntimeContext): void {
   if (existsSync(ctx.pkgJsonPath)) {
     try {
@@ -334,6 +349,7 @@ function scoreAgentLegibility(result: AuditResult, ctx: AuditRuntimeContext): vo
   scoreObservability(result, ctx);
   scoreDependencyFootprint(result, ctx);
   scoreToolRegistry(result, ctx);
+  scoreBackPressure(result, ctx);
 }
 
 function scoreGoldenPrinciples(result: AuditResult, ctx: AuditRuntimeContext): void {
@@ -484,11 +500,69 @@ function scoreAgentWorkflowOrchestration(result: AuditResult, ctx: AuditRuntimeC
   }
 }
 
+function scoreAgentWorkflowHooks(result: AuditResult, ctx: AuditRuntimeContext): void {
+  if (ctx.hasHooksConfig) {
+    result.scores.agent_workflow.score++;
+    result.scores.agent_workflow.findings.push("Lifecycle hooks configured (back-pressure/verification)");
+  }
+}
+
+function scoreMcpToolProliferation(result: AuditResult, ctx: AuditRuntimeContext): void {
+  if (ctx.mcpToolCount === 0) return;
+  if (ctx.mcpToolCount > 10) {
+    result.scores.agent_workflow.findings.push(
+      `MCP tool proliferation warning: ${ctx.mcpToolCount} servers configured (recommend <10 to avoid reasoning degradation)`,
+    );
+    result.recommendations.push("Reduce MCP tool count — too many tool descriptions degrade agent reasoning quality");
+  } else {
+    result.scores.agent_workflow.findings.push(`MCP tools configured: ${ctx.mcpToolCount} servers (healthy)`);
+  }
+}
+
+function scoreCustomChecks(result: AuditResult, ctx: AuditRuntimeContext): void {
+  for (const check of ctx.customChecks) {
+    const dimension = check.dimension as keyof typeof result.scores;
+    if (!(dimension in result.scores)) continue;
+
+    if (check.type === "file-exists") {
+      const fullPath = join(ctx.targetDir, check.path);
+      if (existsSync(fullPath)) {
+        result.scores[dimension].findings.push(`[custom] ${check.name}: ${check.path} exists`);
+      } else {
+        result.scores[dimension].findings.push(`[custom] ${check.name}: ${check.path} missing`);
+      }
+    } else if (check.type === "file-contains" && check.pattern) {
+      const fullPath = join(ctx.targetDir, check.path);
+      if (existsSync(fullPath)) {
+        try {
+          const content = readFileSync(fullPath, "utf-8");
+          let regex: RegExp;
+          try {
+            regex = new RegExp(check.pattern, "i");
+          } catch {
+            result.scores[dimension].findings.push(`[custom] ${check.name}: invalid regex pattern "${check.pattern}"`);
+            continue;
+          }
+          if (regex.test(content)) {
+            result.scores[dimension].findings.push(`[custom] ${check.name}: pattern found in ${check.path}`);
+          } else {
+            result.scores[dimension].findings.push(`[custom] ${check.name}: pattern not found in ${check.path}`);
+          }
+        } catch {
+          result.scores[dimension].findings.push(`[custom] ${check.name}: error reading ${check.path}`);
+        }
+      }
+    }
+  }
+}
+
 function scoreAgentWorkflow(result: AuditResult, ctx: AuditRuntimeContext): void {
   scoreAgentWorkflowConfig(result, ctx);
   scoreAgentWorkflowGovernance(result, ctx);
   scoreAgentWorkflowCi(result, ctx);
   scoreAgentWorkflowBlueprints(result, ctx);
+  scoreAgentWorkflowHooks(result, ctx);
+  scoreMcpToolProliferation(result, ctx);
   detectZteSignals(result, ctx);
   scoreAgentWorkflowOrchestration(result, ctx);
 }
@@ -565,12 +639,15 @@ export function applyAuditScoring(result: AuditResult, ctx: AuditRuntimeContext)
   scoreGoldenPrinciples(result, ctx);
   scoreAgentWorkflow(result, ctx);
   scoreGarbageCollection(result, ctx);
+  scoreCustomChecks(result, ctx);
 }
 
+export const MATURITY_THRESHOLDS = { L0: 6, L1: 12, L2: 18, L3: 21 } as const;
+
 export function resolveMaturityLevel(totalScore: number): string {
-  if (totalScore <= 5) return "L0: Manual";
-  if (totalScore <= 11) return "L1: Inloop";
-  if (totalScore <= 16) return "L2: Guided Outloop";
-  if (totalScore <= 19) return "L3: Full Outloop";
+  if (totalScore <= MATURITY_THRESHOLDS.L0) return "L0: Manual";
+  if (totalScore <= MATURITY_THRESHOLDS.L1) return "L1: Inloop";
+  if (totalScore <= MATURITY_THRESHOLDS.L2) return "L2: Guided Outloop";
+  if (totalScore <= MATURITY_THRESHOLDS.L3) return "L3: Full Outloop";
   return "L4: Zero Touch";
 }

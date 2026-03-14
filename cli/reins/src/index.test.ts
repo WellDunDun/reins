@@ -183,7 +183,7 @@ describe("reins audit", () => {
 
     const result = JSON.parse(stdout);
     expect(result.total_score).toBe(0);
-    expect(result.max_score).toBe(22);
+    expect(result.max_score).toBe(24);
     expect(result.maturity_level).toBe("L0: Manual");
     expect(result.scores.repository_knowledge.score).toBe(0);
     expect(result.scores.architecture_enforcement.score).toBe(0);
@@ -268,7 +268,7 @@ describe("reins audit", () => {
     expect(result).toHaveProperty("max_score");
     expect(result).toHaveProperty("maturity_level");
     expect(result).toHaveProperty("recommendations");
-    expect(result.max_score).toBe(22);
+    expect(result.max_score).toBe(24);
   });
 
   test("fails on nonexistent directory", async () => {
@@ -1054,5 +1054,174 @@ describe("docs contract — skill/cli/human model clarity", () => {
     expect(cliReadme).toContain("`reins-cli` is the execution engine");
     expect(cliReadme).toContain("The Reins skill is the control plane");
     expect(cliReadme).toContain("npx skills add WellDunDun/reins");
+  });
+});
+
+// ─── Compare Command ─────────────────────────────────────────────────────────
+
+describe("reins compare", () => {
+  test("outputs score deltas against a baseline", async () => {
+    const dir = tmpDir("compare-basic");
+    await runCli(`init ${dir}`);
+
+    // Save a baseline
+    const { stdout: baselineJson } = await runCli(`audit ${dir}`);
+    const baselinePath = join(dir, "baseline.json");
+    writeFileSync(baselinePath, baselineJson);
+
+    // Add linter to change score
+    writeFileSync(join(dir, "biome.json"), "{}");
+
+    const { stdout, exitCode } = await runCli(`compare ${dir} ${baselinePath}`);
+    expect(exitCode).toBe(0);
+
+    const result = JSON.parse(stdout);
+    expect(result.command).toBe("compare");
+    expect(result.score_delta).toBeGreaterThanOrEqual(0);
+    expect(result.dimensions).toBeInstanceOf(Array);
+    expect(result.dimensions.length).toBe(6);
+    expect(result.dimensions[0]).toHaveProperty("dimension");
+    expect(result.dimensions[0]).toHaveProperty("delta");
+  });
+
+  test("shows maturity level change", async () => {
+    const dir = tmpDir("compare-level");
+
+    // Baseline with empty dir (L0)
+    const { stdout: baselineJson } = await runCli(`audit ${dir}`);
+    const baselinePath = join(dir, "baseline.json");
+    writeFileSync(baselinePath, baselineJson);
+
+    // Scaffold to raise score
+    await runCli(`init ${dir} --force`);
+
+    const { stdout } = await runCli(`compare ${dir} ${baselinePath}`);
+    const result = JSON.parse(stdout);
+
+    expect(result.before_level).toBe("L0: Manual");
+    expect(result.level_changed).toBe(true);
+  });
+
+  test("fails with missing baseline", async () => {
+    const dir = tmpDir("compare-missing");
+    const { stderr, exitCode } = await runCli(`compare ${dir} ${dir}/nonexistent.json`);
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Baseline file not found");
+  });
+
+  test("fails without baseline argument", async () => {
+    const dir = tmpDir("compare-no-arg");
+    const { stderr, exitCode } = await runCli(`compare ${dir}`);
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Missing baseline file");
+  });
+});
+
+// ─── MCP Tool Proliferation ─────────────────────────────────────────────────
+
+describe("MCP tool proliferation detection", () => {
+  test("warns when more than 10 MCP servers configured", async () => {
+    const dir = tmpDir("mcp-proliferation");
+    mkdirSync(join(dir, ".claude"), { recursive: true });
+    const servers: Record<string, unknown> = {};
+    for (let i = 0; i < 12; i++) {
+      servers[`tool-${i}`] = { command: "echo" };
+    }
+    writeFileSync(join(dir, ".claude", "mcp.json"), JSON.stringify({ mcpServers: servers }));
+
+    const { stdout } = await runCli(`audit ${dir}`);
+    const result = JSON.parse(stdout);
+
+    expect(result.scores.agent_workflow.findings).toEqual(
+      expect.arrayContaining([expect.stringContaining("proliferation warning: 12 servers")]),
+    );
+  });
+
+  test("reports healthy tool count when under 10", async () => {
+    const dir = tmpDir("mcp-healthy");
+    mkdirSync(join(dir, ".claude"), { recursive: true });
+    writeFileSync(
+      join(dir, ".claude", "mcp.json"),
+      JSON.stringify({ mcpServers: { tool1: {}, tool2: {}, tool3: {} } }),
+    );
+
+    const { stdout } = await runCli(`audit ${dir}`);
+    const result = JSON.parse(stdout);
+
+    expect(result.scores.agent_workflow.findings).toEqual(
+      expect.arrayContaining([expect.stringContaining("MCP tools configured: 3 servers (healthy)")]),
+    );
+  });
+});
+
+// ─── Custom Checks Plugin ───────────────────────────────────────────────────
+
+describe("custom checks plugin", () => {
+  test("file-exists check appears in audit findings", async () => {
+    const dir = tmpDir("custom-file-exists");
+    mkdirSync(join(dir, ".reins"), { recursive: true });
+    writeFileSync(join(dir, "SECURITY.md"), "# Security policy");
+    writeFileSync(
+      join(dir, ".reins", "custom-checks.json"),
+      JSON.stringify({
+        checks: [
+          { name: "Security policy", type: "file-exists", path: "SECURITY.md", dimension: "repository_knowledge" },
+        ],
+      }),
+    );
+
+    const { stdout } = await runCli(`audit ${dir}`);
+    const result = JSON.parse(stdout);
+
+    expect(result.scores.repository_knowledge.findings).toEqual(
+      expect.arrayContaining([expect.stringContaining("[custom] Security policy: SECURITY.md exists")]),
+    );
+  });
+
+  test("file-exists check reports missing file", async () => {
+    const dir = tmpDir("custom-file-missing");
+    mkdirSync(join(dir, ".reins"), { recursive: true });
+    writeFileSync(
+      join(dir, ".reins", "custom-checks.json"),
+      JSON.stringify({
+        checks: [
+          { name: "Missing file", type: "file-exists", path: "NOPE.md", dimension: "repository_knowledge" },
+        ],
+      }),
+    );
+
+    const { stdout } = await runCli(`audit ${dir}`);
+    const result = JSON.parse(stdout);
+
+    expect(result.scores.repository_knowledge.findings).toEqual(
+      expect.arrayContaining([expect.stringContaining("[custom] Missing file: NOPE.md missing")]),
+    );
+  });
+
+  test("file-contains check matches pattern", async () => {
+    const dir = tmpDir("custom-contains");
+    mkdirSync(join(dir, ".reins"), { recursive: true });
+    writeFileSync(join(dir, "README.md"), "# My Project\n\nThis project uses TypeScript.");
+    writeFileSync(
+      join(dir, ".reins", "custom-checks.json"),
+      JSON.stringify({
+        checks: [
+          {
+            name: "TypeScript mentioned",
+            type: "file-contains",
+            path: "README.md",
+            pattern: "TypeScript",
+            dimension: "agent_legibility",
+          },
+        ],
+      }),
+    );
+
+    const { stdout } = await runCli(`audit ${dir}`);
+    const result = JSON.parse(stdout);
+
+    expect(result.scores.agent_legibility.findings).toEqual(
+      expect.arrayContaining([expect.stringContaining("[custom] TypeScript mentioned: pattern found")]),
+    );
   });
 });

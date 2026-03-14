@@ -20,13 +20,13 @@ For remediation detail, pair with doctor:
   "scores": {
     "repository_knowledge": { "score": 4, "max": 4, "findings": ["AGENTS.md exists (56 lines)", "..."] },
     "architecture_enforcement": { "score": 3, "max": 3, "findings": ["..."] },
-    "agent_legibility": { "score": 4, "max": 4, "findings": ["..."] },
+    "agent_legibility": { "score": 5, "max": 5, "findings": ["..."] },
     "golden_principles": { "score": 3, "max": 3, "findings": ["..."] },
-    "agent_workflow": { "score": 5, "max": 5, "findings": ["..."] },
+    "agent_workflow": { "score": 6, "max": 6, "findings": ["..."] },
     "garbage_collection": { "score": 3, "max": 3, "findings": ["..."] }
   },
-  "total_score": 22,
-  "max_score": 22,
+  "total_score": 24,
+  "max_score": 24,
   "maturity_level": "L4: Zero Touch",
   "frameworks_detected": ["symphony", "claude-code"],
   "recommendations": ["Project is well-structured. Consider evolving to next maturity level."]
@@ -39,7 +39,7 @@ For remediation detail, pair with doctor:
 
 ```bash
 result=$(cd cli/reins && bun src/index.ts audit <path>)
-# Parse: .total_score (integer 0-22)
+# Parse: .total_score (integer 0-24)
 # Parse: .maturity_level (string like "L4: Zero Touch")
 ```
 
@@ -59,7 +59,7 @@ result=$(cd cli/reins && bun src/index.ts audit <path>)
 
 ## Audit Dimensions
 
-Score each dimension from 0 up to its max (dimensions have different maxes: RK 0-4, AE 0-3, AL 0-4, GP 0-3, AW 0-5, GC 0-3):
+Score each dimension from 0 up to its max (dimensions have different maxes: RK 0-4, AE 0-3, AL 0-5, GP 0-3, AW 0-6, GC 0-3):
 - **0** = Not present
 - **1** = Minimal/ad-hoc
 - **2** = Structured but incomplete
@@ -87,7 +87,7 @@ Score each dimension from 0 up to its max (dimensions have different maxes: RK 0
 
 **Bonus findings:** Linter depth details, enforcement signal count.
 
-### 3. Agent Legibility (0-4)
+### 3. Agent Legibility (0-5)
 
 | Check | Points |
 |-------|--------|
@@ -108,7 +108,7 @@ Score each dimension from 0 up to its max (dimensions have different maxes: RK 0
 
 **Bonus findings:** Principle count, anti-patterns detected, CI gate count.
 
-### 5. Agent Workflow (0-5)
+### 5. Agent Workflow (0-6)
 
 | Check | Points |
 |-------|--------|
@@ -132,11 +132,11 @@ Score each dimension from 0 up to its max (dimensions have different maxes: RK 0
 
 | Score | Level | Description |
 |-------|-------|-------------|
-| 0-5 | **L0: Manual** | Traditional engineering, no agent infrastructure |
-| 6-11 | **L1: Inloop** | Agents help, but humans still write code |
-| 12-16 | **L2: Guided Outloop** | Humans steer, agents execute most code |
-| 17-19 | **L3: Full Outloop** | Agents handle full lifecycle with human oversight |
-| 20-22 | **L4: Zero Touch** | Agents maintain, clean, and evolve the system |
+| 0-6 | **L0: Manual** | Traditional engineering, no agent infrastructure |
+| 7-12 | **L1: Inloop** | Agents help, but humans still write code |
+| 13-18 | **L2: Guided Outloop** | Humans steer, agents execute most code |
+| 19-21 | **L3: Full Outloop** | Agents handle full lifecycle with human oversight |
+| 22-24 | **L4: Zero Touch** | Agents maintain, clean, and evolve the system |
 
 ## Steps
 

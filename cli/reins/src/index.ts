@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { runAudit, runAuditCommand } from "./lib/commands/audit";
+import { runCompare } from "./lib/commands/compare";
 import { runDoctor } from "./lib/commands/doctor";
 import { runEvolve } from "./lib/commands/evolve";
 import { runInit as runInitCommand } from "./lib/commands/init";
@@ -16,6 +17,7 @@ COMMANDS:
   audit <path>    Audit a project against harness engineering principles
   evolve <path>   Show evolution path to next maturity level
   doctor <path>   Check project health with prescriptive fixes
+  compare <path> <baseline.json>  Compare current audit against a saved baseline
   help            Show this help message
 
 OPTIONS:
@@ -36,11 +38,11 @@ EXAMPLES:
   reins doctor .                  # Get prescriptive fixes
 
 MATURITY LEVELS:
-  L0: Manual          (0-5)   Traditional engineering
-  L1: Inloop          (6-10)  Agents in the loop, humans code
-  L2: Guided Outloop  (11-15) Humans steer, agents execute
-  L3: Full Outloop    (16-18) Agents handle full lifecycle
-  L4: Zero Touch      (19-21) System maintains itself
+  L0: Manual          (0-6)   Traditional engineering
+  L1: Inloop          (7-12)  Agents in the loop, humans code
+  L2: Guided Outloop  (13-18) Humans steer, agents execute
+  L3: Full Outloop    (19-21) Agents handle full lifecycle
+  L4: Zero Touch      (22-24) System maintains itself
 `;
   console.log(help);
 }
@@ -79,6 +81,16 @@ function main(): void {
     case "evolve": {
       const path = args[1] || ".";
       runEvolve(path, hasFlag("--apply"), { runAudit, runInit: runInitCommand });
+      break;
+    }
+    case "compare": {
+      const path = args[1] || ".";
+      const baseline = args[2];
+      if (!baseline) {
+        console.error(JSON.stringify({ error: "Missing baseline file. Usage: reins compare <path> <baseline.json>" }));
+        process.exit(1);
+      }
+      runCompare(path, baseline, { runAudit });
       break;
     }
     case "doctor": {

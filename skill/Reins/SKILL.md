@@ -19,7 +19,7 @@ Do not re-implement CLI logic in skill instructions. Always run commands and par
 
 Use this skill when the user asks to:
 - Scaffold repository readiness artifacts (`AGENTS.md`, `ARCHITECTURE.md`, `docs/`, `risk-policy.json`)
-- Audit or score agent-readiness/maturity (0-22, maturity levels, weakest dimensions)
+- Audit or score agent-readiness/maturity (0-24, maturity levels, weakest dimensions)
 - Diagnose readiness gaps with `doctor` (pass/fail/warn health checks with prescriptive fixes)
 - Evolve the repository to the next Reins maturity level
 - Improve docs-drift/policy-as-code enforcement tied to Reins outputs
@@ -56,7 +56,7 @@ All Reins commands output deterministic JSON. **Always parse JSON output** — n
 # Scaffold harness engineering structure
 reins init <path> [--name <name>] [--force] [--pack <auto|agent-factory>]
 
-# Score maturity across 6 dimensions (0-22)
+# Score maturity across 6 dimensions (0-24)
 reins audit <path>
 
 # Health check with prescriptive fixes
@@ -64,6 +64,9 @@ reins doctor <path>
 
 # Roadmap to next maturity level
 reins evolve <path> [--apply]
+
+# Compare audits across repos or over time
+reins compare <path1> <path2>
 
 # Show usage
 reins help
@@ -73,11 +76,11 @@ reins help
 
 | Score | Level | Description |
 |-------|-------|-------------|
-| 0-5 | **L0: Manual** | Traditional engineering, no agent infrastructure |
-| 6-11 | **L1: Inloop** | Agents help, but humans still write code |
-| 12-16 | **L2: Guided Outloop** | Humans steer, agents execute most code |
-| 17-19 | **L3: Full Outloop** | Agents handle full lifecycle with human oversight |
-| 20-22 | **L4: Zero Touch** | Agents maintain, clean, and evolve the system |
+| 0-6 | **L0: Manual** | Traditional engineering, no agent infrastructure |
+| 7-12 | **L1: Inloop** | Agents help, but humans still write code |
+| 13-18 | **L2: Guided Outloop** | Humans steer, agents execute most code |
+| 19-21 | **L3: Full Outloop** | Agents handle full lifecycle with human oversight |
+| 22-24 | **L4: Zero Touch** | Agents maintain, clean, and evolve the system |
 
 ## Core Reins Principles
 

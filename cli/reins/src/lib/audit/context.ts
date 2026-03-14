@@ -40,7 +40,19 @@ export interface AuditRuntimeContext {
   hasConcurrencyLimits: boolean;
   hasMergeProtection: boolean;
   hasSpecDocument: boolean;
+  hasHooksConfig: boolean;
+  hasBackPressure: boolean;
+  mcpToolCount: number;
+  customChecks: CustomCheck[];
   frameworksDetected: string[];
+}
+
+export interface CustomCheck {
+  name: string;
+  type: "file-exists" | "file-contains";
+  path: string;
+  pattern?: string;
+  dimension: string;
 }
 
 export function createAuditResult(projectName: string): AuditResult {
@@ -51,13 +63,13 @@ export function createAuditResult(projectName: string): AuditResult {
     scores: {
       repository_knowledge: { score: 0, max: 4, findings: [] },
       architecture_enforcement: { score: 0, max: 3, findings: [] },
-      agent_legibility: { score: 0, max: 4, findings: [] },
+      agent_legibility: { score: 0, max: 5, findings: [] },
       golden_principles: { score: 0, max: 3, findings: [] },
-      agent_workflow: { score: 0, max: 5, findings: [] },
+      agent_workflow: { score: 0, max: 6, findings: [] },
       garbage_collection: { score: 0, max: 3, findings: [] },
     },
     total_score: 0,
-    max_score: 22,
+    max_score: 24,
     maturity_level: "L0",
     recommendations: [],
     frameworks_detected: [],
@@ -110,6 +122,115 @@ function detectConcurrencyLimits(targetDir: string, hasWorkflowConfig: boolean, 
     return /concurrency|maxConcurrentAgents/i.test(content);
   } catch {
     return false;
+  }
+}
+
+function detectHooksConfig(targetDir: string): boolean {
+  const hookPaths = [
+    join(targetDir, ".claude", "settings.json"),
+    join(targetDir, ".husky"),
+    join(targetDir, ".githooks"),
+    join(targetDir, ".lefthook.yml"),
+    join(targetDir, "lefthook.yml"),
+  ];
+  for (const hookPath of hookPaths) {
+    if (!existsSync(hookPath)) continue;
+    if (hookPath.endsWith("settings.json")) {
+      try {
+        const content = readFileSync(hookPath, "utf-8");
+        if (/hooks/i.test(content)) return true;
+      } catch {
+        // ignore
+      }
+    } else {
+      return true;
+    }
+  }
+  return false;
+}
+
+function detectBackPressure(targetDir: string, pkgJsonPath: string): boolean {
+  // JS/TS: package.json scripts
+  if (existsSync(pkgJsonPath)) {
+    try {
+      const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf-8"));
+      const scripts = pkg.scripts || {};
+      const hasTest = "test" in scripts;
+      const hasTypecheck = "typecheck" in scripts || "type-check" in scripts || "tsc" in scripts;
+      if (hasTest && hasTypecheck) return true;
+    } catch {
+      // ignore
+    }
+  }
+
+  // Makefile: test target
+  const makefilePath = join(targetDir, "Makefile");
+  if (existsSync(makefilePath)) {
+    try {
+      const content = readFileSync(makefilePath, "utf-8");
+      if (/^test\s*:/m.test(content) && (/^lint\s*:/m.test(content) || /^check\s*:/m.test(content))) return true;
+    } catch {
+      // ignore
+    }
+  }
+
+  // Python: pyproject.toml with test framework
+  const pyprojectPath = join(targetDir, "pyproject.toml");
+  if (existsSync(pyprojectPath)) {
+    try {
+      const content = readFileSync(pyprojectPath, "utf-8");
+      const hasTestTool = /\[tool\.(pytest|mypy|pyright)\]/i.test(content);
+      if (hasTestTool) return true;
+    } catch {
+      // ignore
+    }
+  }
+
+  // Rust: Cargo.toml (Rust has built-in test + type checking)
+  if (existsSync(join(targetDir, "Cargo.toml"))) return true;
+
+  return false;
+}
+
+function countMcpTools(targetDir: string): number {
+  const mcpPaths = [
+    join(targetDir, ".claude", "mcp.json"),
+    join(targetDir, ".cursor", "mcp.json"),
+    join(targetDir, "mcp.json"),
+  ];
+  for (const mcpPath of mcpPaths) {
+    if (!existsSync(mcpPath)) continue;
+    try {
+      const config = JSON.parse(readFileSync(mcpPath, "utf-8"));
+      const servers = config.mcpServers || config.servers || config;
+      if (typeof servers === "object" && !Array.isArray(servers)) {
+        return Object.keys(servers).length;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return 0;
+}
+
+function loadCustomChecks(targetDir: string): CustomCheck[] {
+  const checksPath = join(targetDir, ".reins", "custom-checks.json");
+  if (!existsSync(checksPath)) return [];
+  try {
+    const config = JSON.parse(readFileSync(checksPath, "utf-8"));
+    if (!Array.isArray(config.checks)) return [];
+    return config.checks.filter(
+      (c: unknown): c is CustomCheck =>
+        typeof c === "object" &&
+        c !== null &&
+        "name" in c &&
+        "type" in c &&
+        "path" in c &&
+        "dimension" in c &&
+        ((c as CustomCheck).type === "file-exists" || (c as CustomCheck).type === "file-contains"),
+    );
+  } catch {
+    return [];
   }
 }
 
@@ -191,6 +312,10 @@ export function buildAuditRuntimeContext(targetDir: string): AuditRuntimeContext
     checkWorkflowsForMergeProtection(workflowDir);
 
   const hasSpecDocument = existsSync(join(targetDir, "SPEC.md")) || existsSync(join(targetDir, "spec.md"));
+  const hasHooksConfig = detectHooksConfig(targetDir);
+  const hasBackPressure = detectBackPressure(targetDir, pkgJsonPath);
+  const mcpToolCount = countMcpTools(targetDir);
+  const customChecks = loadCustomChecks(targetDir);
 
   return {
     targetDir,
@@ -222,6 +347,10 @@ export function buildAuditRuntimeContext(targetDir: string): AuditRuntimeContext
     hasConcurrencyLimits,
     hasMergeProtection,
     hasSpecDocument,
+    hasHooksConfig,
+    hasBackPressure,
+    mcpToolCount,
+    customChecks,
     frameworksDetected: detectFrameworks(targetDir),
   };
 }

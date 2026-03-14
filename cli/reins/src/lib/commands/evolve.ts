@@ -6,6 +6,7 @@ import {
   recommendAutomationPack,
   scaffoldAutomationPack,
 } from "../automation-pack";
+import { MATURITY_THRESHOLDS } from "../audit/scoring";
 import type { AuditResult, EvolutionPath, EvolutionStep, InitOptions } from "../types";
 
 type LevelKey = "L0" | "L1" | "L2" | "L3" | "L4";
@@ -102,6 +103,13 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
         description:
           "Create WORKFLOW.md with YAML frontmatter (concurrency, sandbox, hooks) and markdown body (agent prompt template). Versions agent behavior alongside code.",
         automated: true,
+      },
+      {
+        step: 7,
+        action: "Set up back-pressure mechanisms",
+        description:
+          "Add test and typecheck scripts so agents can self-verify their work. Back-pressure correlates strongly with agent success rates.",
+        automated: false,
       },
     ],
     success_criteria: "Most new code is written by agents, not humans.",
@@ -220,10 +228,10 @@ const EVOLUTION_PATHS: Record<EvolvePathKey, EvolutionPath> = {
 };
 
 function resolveCurrentLevelKey(totalScore: number): LevelKey {
-  if (totalScore <= 5) return "L0";
-  if (totalScore <= 11) return "L1";
-  if (totalScore <= 16) return "L2";
-  if (totalScore <= 19) return "L3";
+  if (totalScore <= MATURITY_THRESHOLDS.L0) return "L0";
+  if (totalScore <= MATURITY_THRESHOLDS.L1) return "L1";
+  if (totalScore <= MATURITY_THRESHOLDS.L2) return "L2";
+  if (totalScore <= MATURITY_THRESHOLDS.L3) return "L3";
   return "L4";
 }
 
