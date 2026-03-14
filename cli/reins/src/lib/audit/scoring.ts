@@ -536,6 +536,13 @@ function scoreCustomChecks(result: AuditResult, ctx: AuditRuntimeContext): void 
       if (existsSync(fullPath)) {
         try {
           const content = readFileSync(fullPath, "utf-8");
+          // Guard against ReDoS: reject nested quantifiers like (a+)+
+          if (/([+*?]\)?[+*?]|(\.\*){3,})/.test(check.pattern)) {
+            result.scores[dimension].findings.push(
+              `[custom] ${check.name}: regex pattern rejected (nested quantifiers may cause ReDoS)`,
+            );
+            continue;
+          }
           let regex: RegExp;
           try {
             regex = new RegExp(check.pattern, "i");
