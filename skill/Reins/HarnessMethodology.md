@@ -1,6 +1,8 @@
 # Harness Engineering Methodology Reference
 
-> Source: OpenAI's "Harness Engineering" (Feb 2026, Ryan Lopopolo)
+> Sources:
+> - OpenAI's "Harness Engineering" (Feb 2026, Ryan Lopopolo)
+> - HumanLayer's "Skill Issue: Harness Engineering for Coding Agents" (Mar 2026, Kyle)
 
 ## Philosophy
 
@@ -149,6 +151,25 @@ Product requirements versioned in-repo alongside design docs and execution plans
 ### 10. i18n as Schema Constraint
 Internationalization treated as a structural schema constraint rather than an afterthought. Enforced at the type level, not bolted on later.
 
+## Configuration Surfaces (HumanLayer)
+
+The following configuration surfaces shape agent behavior beyond the repository structure:
+
+### Back-Pressure Mechanisms
+Tests, type checks, and coverage reporting allow agents to verify their own work. These correlate strongly with agent success rates. A repo without back-pressure forces agents to commit blind — adding `test`, `typecheck`, and `build` scripts provides structured self-verification.
+
+### Hooks
+User-defined scripts executing at agent lifecycle events (similar to git hooks). Enable notifications, approvals, integrations, and verification without polluting the agent's reasoning context. Examples: pre-commit validation, post-tool-use checks, session-start context loading.
+
+### Progressive Disclosure via Skills
+Agents access specialized knowledge only when the task demands it, rather than loading everything into the system prompt upfront. Skill registries enable this but carry supply-chain risk — treat skill installation like `npm install` from an unknown source.
+
+### Sub-Agent Context Isolation
+Encapsulating discrete tasks in separate agent sessions prevents context rot. Parents see only prompts and final results, not intermediate reasoning noise. Chroma's research confirms performance degrades measurably at longer context lengths.
+
+### Context Length Discipline
+ETH Zurich tested 138 agentfiles: LLM-generated ones hurt performance, human-written ones helped only minimally. The takeaway: keep agent instructions concise and human-authored. HumanLayer recommends AGENTS.md under 60 lines.
+
 ## Anti-Patterns
 
 - One giant AGENTS.md (context starvation, instant rot)
@@ -157,3 +178,6 @@ Internationalization treated as a structural schema constraint rather than an af
 - Manual code review as primary quality gate
 - Opaque dependencies agents can't reason about
 - Letting tech debt compound without garbage collection
+- Tool proliferation in MCP configs (pushes agents into "the dumb zone" — too many tool descriptions consume context budget and degrade reasoning quality)
+- LLM-generated agentfiles (ETH Zurich study shows they hurt performance vs. concise human-written ones)
+- Preemptive over-engineering of harness config (start simple, add config only when real failures occur)

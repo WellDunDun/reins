@@ -29,3 +29,7 @@ Pay it down continuously in small increments. Background agents handle cleanup. 
 ## 7. Progressive Disclosure Over Information Dumps
 
 Give agents a map (short AGENTS.md) and teach them where to look. Don't overwhelm context with everything at once.
+
+## 8. Configuration Over Model Capability
+
+Agent failures are almost never about model intelligence — they're about how well humans configured the harness. When an agent produces poor output, examine the configuration surfaces (instructions, tools, back-pressure, context length) before blaming the model. It's a skill issue, not a model issue.

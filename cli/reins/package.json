@@ -1,6 +1,6 @@
 {
   "name": "reins-cli",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Scaffold, audit, and evolve projects using the Harness Engineering methodology",
   "type": "module",
   "license": "MIT",
@@ -36,7 +36,8 @@
   ],
   "scripts": {
     "start": "bun src/index.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/bun": "latest"

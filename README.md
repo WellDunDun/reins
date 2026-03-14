@@ -59,7 +59,7 @@ npx reins-cli@latest audit .
 ```json
 {
   "total_score": 6,
-  "max_score": 22,
+  "max_score": 24,
   "maturity_level": "L1: Inloop",
   "recommendations": [
     "Create ARCHITECTURE.md with domain map and layer rules",
@@ -95,7 +95,7 @@ Most agent rollouts fail for one boring reason: agents can edit code, but the re
 
 Reins gives you a repeatable operating system for agent work:
 - **A map** (`AGENTS.md`, architecture docs, indexed decisions)
-- **A score** (0-22 maturity audit with concrete gaps)
+- **A score** (0-24 maturity audit with concrete gaps)
 - **A plan** (next-step evolution path by maturity level)
 - **A guardrail model** (`risk-policy.json` + CI enforcement signals)
 
@@ -138,28 +138,31 @@ block-beta
 
 **Use them together.** Reins scaffolds your repo so `AGENTS.md` tells the agent where everything is, `ARCHITECTURE.md` defines the rules, and golden principles are enforced in CI. Then a session orchestrator runs the actual coding work on top of that well-structured repo.
 
-## The four commands
+## The five commands
 
 ```mermaid
 graph LR
-    Init["reins init\nScaffold"] --> Audit["reins audit\nScore 0-22"]
+    Init["reins init\nScaffold"] --> Audit["reins audit\nScore 0-24"]
     Audit --> Evolve["reins evolve\nLevel up"]
     Evolve --> Doctor["reins doctor\nHealth check"]
     Doctor --> Audit
+    Audit --> Compare["reins compare\nBaseline diff"]
 
     style Init fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
     style Audit fill:#1e3a5f,stroke:#60a5fa,color:#e2e8f0
     style Evolve fill:#1e3a5f,stroke:#818cf8,color:#e2e8f0
     style Doctor fill:#1e3a5f,stroke:#a78bfa,color:#e2e8f0
+    style Compare fill:#1e3a5f,stroke:#c084fc,color:#e2e8f0
 ```
 
 ```bash
 reins init .           # Scaffold the full structure
 reins init . --pack auto  # Adaptive pack selection from project signals
 reins init . --pack agent-factory  # Optional advanced automation pack
-reins audit .          # Score against harness principles (0-22)
+reins audit .          # Score against harness principles (0-24)
 reins evolve .         # Roadmap to next maturity level
 reins doctor .         # Health check with prescriptive fixes
+reins compare <path> <baseline.json>  # Compare current audit against a baseline
 ```
 
 ## The maturity model
@@ -168,10 +171,10 @@ Every repo sits on a maturity spectrum. The audit tells you where you are. The e
 
 ```mermaid
 graph LR
-    L0["L0: Manual\n0-5"] --> L1["L1: Inloop\n6-11"]
-    L1 --> L2["L2: Guided Outloop\n12-16"]
-    L2 --> L3["L3: Full Outloop\n17-19"]
-    L3 --> L4["L4: Zero Touch\n20-22"]
+    L0["L0: Manual\n0-6"] --> L1["L1: Inloop\n7-12"]
+    L1 --> L2["L2: Guided Outloop\n13-18"]
+    L2 --> L3["L3: Full Outloop\n19-21"]
+    L3 --> L4["L4: Zero Touch\n22-24"]
 
     style L0 fill:#1e293b,stroke:#475569,color:#94a3b8
     style L1 fill:#1e293b,stroke:#3b82f6,color:#93c5fd
@@ -182,11 +185,11 @@ graph LR
 
 | Score | Level | What it means |
 |-------|-------|---------------|
-| 0-5 | **L0: Manual** | Traditional engineering, no agent infra |
-| 6-11 | **L1: Inloop** | Agents help, humans still write code |
-| 12-16 | **L2: Guided Outloop** | Humans steer, agents execute most code |
-| 17-19 | **L3: Full Outloop** | Agents handle full lifecycle |
-| 20-22 | **L4: Zero Touch** | System maintains and improves itself |
+| 0-6 | **L0: Manual** | Traditional engineering, no agent infra |
+| 7-12 | **L1: Inloop** | Agents help, humans still write code |
+| 13-18 | **L2: Guided Outloop** | Humans steer, agents execute most code |
+| 19-21 | **L3: Full Outloop** | Agents handle full lifecycle |
+| 22-24 | **L4: Zero Touch** | System maintains and improves itself |
 
 ## What `reins init` scaffolds
 
@@ -232,16 +235,16 @@ reins init . --pack agent-factory
 
 ## The six audit dimensions
 
-Scored across six dimensions, totaling 0-22:
+Scored across six dimensions, totaling 0-24:
 
 ```mermaid
 graph TD
-    Score["Total Score\n0-22"]
+    Score["Total Score\n0-24"]
     RK["Repository Knowledge\n0-4"]
     AE["Architecture Enforcement\n0-3"]
-    AL["Agent Legibility\n0-4"]
+    AL["Agent Legibility\n0-5"]
     GP["Golden Principles\n0-3"]
-    AW["Agent Workflow\n0-5"]
+    AW["Agent Workflow\n0-6"]
     GC["Garbage Collection\n0-3"]
 
     RK --> Score
@@ -269,14 +272,14 @@ graph TD
 | **Agent Workflow** | Agent config, risk policy, PR templates, CI enforcement, orchestration readiness |
 | **Garbage Collection** | Debt tracking, doc-gardening, quality grades, docs drift rules |
 
-## Self-audit: 19/22
+## Self-audit: 19/24
 
 Reins audits itself in CI. Current score:
 
 ```json
 {
   "total_score": 19,
-  "max_score": 22,
+  "max_score": 24,
   "maturity_level": "L3: Full Outloop"
 }
 ```

@@ -1,12 +1,13 @@
 {
   "name": "reins",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Harness Engineering CLI — scaffold, audit, evolve, and doctor agent-readiness",
   "scripts": {
     "dev": "cd cli/reins && bun --watch src/index.ts",
     "test": "cd cli/reins && bun test",
     "audit:self": "cd cli/reins && bun src/index.ts audit ../...",
-    "lint": "bunx @biomejs/biome@1.9.4 check ."
+    "lint": "bunx @biomejs/biome@1.9.4 check .",
+    "typecheck": "cd cli/reins && tsc --noEmit"
   },
   "license": "MIT"
 }

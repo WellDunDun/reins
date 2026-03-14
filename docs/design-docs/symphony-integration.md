@@ -17,7 +17,7 @@ OpenAI released Symphony (March 2026), an Elixir-based autonomous coding orchest
 - **Evolve**: New steps at L1->L2 (workflow config), L2->L3 (skills composition), L3->L4 (workspace isolation)
 - **Init**: Scaffolds WORKFLOW.md and SPEC.md templates
 - **Output**: New `frameworks_detected` informational field in audit output
-- **Total max score**: 22 (was 21)
+- **Total max score**: 24 (was 21)
 
 ## Trade-offs
 

@@ -67,26 +67,26 @@ Pack modes:
 
 ### `reins audit <path>`
 
-Score a project against harness engineering principles (0-22):
+Score a project against harness engineering principles (0-24):
 
 ```bash
 reins audit .
 ```
 
-Scores six dimensions (variable max per dimension, 22 total):
+Scores six dimensions (variable max per dimension, 24 total):
 1. **Repository Knowledge** (0-4) — AGENTS.md, docs/, versioned plans
 2. **Architecture Enforcement** (0-3) — ARCHITECTURE.md, dependency rules, linters
-3. **Agent Legibility** (0-4) — Bootable app, observability, lean dependencies
+3. **Agent Legibility** (0-5) — Bootable app, observability, lean dependencies
 4. **Golden Principles** (0-3) — Documented rules, CI enforcement, cleanup process
-5. **Agent Workflow** (0-5) — Agent config, PR templates, merge gates, orchestration readiness
+5. **Agent Workflow** (0-6) — Agent config, PR templates, merge gates, orchestration readiness
 6. **Garbage Collection** (0-3) — Debt tracking, doc-gardening, quality grades
 
 Returns a maturity level:
-- **L0: Manual** (0-5) — Traditional engineering
-- **L1: Inloop** (6-11) — Agents help, humans still code
-- **L2: Guided Outloop** (12-16) — Humans steer, agents execute
-- **L3: Full Outloop** (17-19) — Agents handle full lifecycle
-- **L4: Zero Touch** (20-22) — System maintains itself
+- **L0: Manual** (0-6) — Traditional engineering
+- **L1: Inloop** (7-12) — Agents help, humans still code
+- **L2: Guided Outloop** (13-18) — Humans steer, agents execute
+- **L3: Full Outloop** (19-21) — Agents handle full lifecycle
+- **L4: Zero Touch** (22-24) — System maintains itself
 
 ### `reins evolve <path>`
 
@@ -108,6 +108,18 @@ reins doctor .
 ```
 
 Returns pass/fail/warn for each check with specific fix instructions.
+
+### `reins compare <path> <baseline.json>`
+
+Compare the current audit score against a saved baseline:
+
+```bash
+reins audit . > baseline.json
+# ... make changes ...
+reins compare . baseline.json
+```
+
+Returns a dimension-by-dimension diff showing score deltas and maturity level changes, useful for tracking progress over time or validating that a set of changes improved readiness.
 
 ## Output
 
