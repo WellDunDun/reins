@@ -519,46 +519,58 @@ function scoreMcpToolProliferation(result: AuditResult, ctx: AuditRuntimeContext
   }
 }
 
+function handleFileExistsCheck(
+  result: AuditResult,
+  check: { name: string; path: string; dimension: string },
+  ctx: AuditRuntimeContext,
+): void {
+  const dimension = check.dimension as keyof typeof result.scores;
+  if (!(dimension in result.scores)) return;
+  const fullPath = join(ctx.targetDir, check.path);
+  const status = existsSync(fullPath) ? "exists" : "missing";
+  result.scores[dimension].findings.push(`[custom] ${check.name}: ${check.path} ${status}`);
+}
+
+function handleFileContainsCheck(
+  result: AuditResult,
+  check: { name: string; path: string; dimension: string; pattern?: string },
+  ctx: AuditRuntimeContext,
+): void {
+  const dimension = check.dimension as keyof typeof result.scores;
+  if (!(dimension in result.scores) || !check.pattern) return;
+  const fullPath = join(ctx.targetDir, check.path);
+  if (!existsSync(fullPath)) return;
+
+  // Guard against ReDoS: reject nested quantifiers like (a+)+
+  if (/([+*?]\)?[+*?]|(\.\*){3,})/.test(check.pattern)) {
+    result.scores[dimension].findings.push(
+      `[custom] ${check.name}: regex pattern rejected (nested quantifiers may cause ReDoS)`,
+    );
+    return;
+  }
+
+  try {
+    const content = readFileSync(fullPath, "utf-8");
+    let regex: RegExp;
+    try {
+      regex = new RegExp(check.pattern, "i");
+    } catch {
+      result.scores[dimension].findings.push(`[custom] ${check.name}: invalid regex pattern "${check.pattern}"`);
+      return;
+    }
+    const status = regex.test(content) ? "pattern found" : "pattern not found";
+    result.scores[dimension].findings.push(`[custom] ${check.name}: ${status} in ${check.path}`);
+  } catch {
+    result.scores[dimension].findings.push(`[custom] ${check.name}: error reading ${check.path}`);
+  }
+}
+
 function scoreCustomChecks(result: AuditResult, ctx: AuditRuntimeContext): void {
   for (const check of ctx.customChecks) {
-    const dimension = check.dimension as keyof typeof result.scores;
-    if (!(dimension in result.scores)) continue;
-
     if (check.type === "file-exists") {
-      const fullPath = join(ctx.targetDir, check.path);
-      if (existsSync(fullPath)) {
-        result.scores[dimension].findings.push(`[custom] ${check.name}: ${check.path} exists`);
-      } else {
-        result.scores[dimension].findings.push(`[custom] ${check.name}: ${check.path} missing`);
-      }
-    } else if (check.type === "file-contains" && check.pattern) {
-      const fullPath = join(ctx.targetDir, check.path);
-      if (existsSync(fullPath)) {
-        try {
-          const content = readFileSync(fullPath, "utf-8");
-          // Guard against ReDoS: reject nested quantifiers like (a+)+
-          if (/([+*?]\)?[+*?]|(\.\*){3,})/.test(check.pattern)) {
-            result.scores[dimension].findings.push(
-              `[custom] ${check.name}: regex pattern rejected (nested quantifiers may cause ReDoS)`,
-            );
-            continue;
-          }
-          let regex: RegExp;
-          try {
-            regex = new RegExp(check.pattern, "i");
-          } catch {
-            result.scores[dimension].findings.push(`[custom] ${check.name}: invalid regex pattern "${check.pattern}"`);
-            continue;
-          }
-          if (regex.test(content)) {
-            result.scores[dimension].findings.push(`[custom] ${check.name}: pattern found in ${check.path}`);
-          } else {
-            result.scores[dimension].findings.push(`[custom] ${check.name}: pattern not found in ${check.path}`);
-          }
-        } catch {
-          result.scores[dimension].findings.push(`[custom] ${check.name}: error reading ${check.path}`);
-        }
-      }
+      handleFileExistsCheck(result, check, ctx);
+    } else if (check.type === "file-contains") {
+      handleFileContainsCheck(result, check, ctx);
     }
   }
 }
