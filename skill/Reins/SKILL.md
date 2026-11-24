@@ -47,3 +47,14 @@ For the full methodology reference, run: `SkillSearch('harness methodology')`
 - "Scaffold a harness engineering project in this repo"
 - "Audit this codebase against harness engineering principles"
 - "Evolve this project to the next harness maturity level"
+
+## Repository instruction routing
+
+Follow [the instruction standard](../../docs/instruction-standard.md). Every
+maintained AGENTS.md, including scoped files, links to a local documentation
+router; the router links to an existing ARCHITECTURE.md and relevant documents.
+New scaffolds use docs/ROUTER.md. Review additive `instruction_checks` from audit
+and doctor findings as structured JSON. Preserve existing guidance during init;
+merge a router link deliberately. Keep shared rules canonical in AGENTS.md and
+validate CLAUDE.md adapters. Warnings require review; static checks do not prove
+semantic correctness or real-agent loading.

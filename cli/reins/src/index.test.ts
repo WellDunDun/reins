@@ -99,7 +99,8 @@ describe("reins init", () => {
 
     const content = readFileSync(join(dir, "AGENTS.md"), "utf-8");
     expect(content).not.toBe("old content");
-    expect(content).toContain("# AGENTS.md");
+    expect(content).toContain("[Documentation router](docs/ROUTER.md)");
+    expect(existsSync(join(dir, "docs/ROUTER.md"))).toBe(true);
   });
 
   test("fails on nonexistent directory", async () => {
@@ -321,5 +322,23 @@ describe("reins help", () => {
     const { stderr, exitCode } = await runCli("foobar");
     expect(exitCode).toBe(1);
     expect(stderr).toContain("Unknown command");
+  });
+});
+
+describe("instruction routing integration", () => {
+  test("scaffolded routes validate and nested failures reach audit and doctor", async () => {
+    const dir = tmpDir("routing-integration");
+    await runCli(`init ${dir}`);
+    const initial = JSON.parse((await runCli(`audit ${dir}`)).stdout);
+    expect(initial.instruction_checks.every((check: { status: string }) => check.status === "pass")).toBe(true);
+    expect(readFileSync(join(dir, "AGENTS.md"), "utf8")).toContain("Before editing a path, read its applicable nested AGENTS.md files and their routers.");
+    const index = readFileSync(join(dir, "docs/design-docs/index.md"), "utf8");
+    expect(index).toContain("Not verified");
+    mkdirSync(join(dir, "packages/example"), { recursive: true });
+    writeFileSync(join(dir, "packages/example/AGENTS.md"), "Scoped rules without a router");
+    const audit = JSON.parse((await runCli(`audit ${dir}`)).stdout);
+    expect(audit.instruction_checks.some((check: { code: string; path: string }) => check.code === "instructions.router-missing" && check.path === "packages/example/AGENTS.md")).toBe(true);
+    const doctor = JSON.parse((await runCli(`doctor ${dir}`)).stdout);
+    expect(doctor.checks.some((check: { code?: string; status: string }) => check.code === "instructions.router-missing" && check.status === "fail")).toBe(true);
   });
 });

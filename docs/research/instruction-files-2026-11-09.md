@@ -1,0 +1,64 @@
+# Instruction-file research review, 9 November 2026
+
+The evidence supports selective instructions and validation. It does not establish that larger context files or a particular documentation tree improve agents universally.
+
+## Papers and strength of evidence
+
+| Primary source | Finding and limitation | Reins implication |
+|----------------|------------------------|-------------------|
+| [When Instruction Files Go Stale, arXiv 2611.09802v1](https://arxiv.org/html/2611.09802v1), 6 November 2026 | Three real stale-instruction cases, 22 mostly seeded maintenance tasks and 732 repeated trajectories from two same-vendor models. A stale test command added roughly two tool calls for Sonnet; other cost differences were unresolved. Repeats do not create 732 independent debt cases. Agents recovered without repairing the stale guide. | Measure meaningful verification and wasted operations alongside task success. This supports neither a router optimum nor universal deletion. |
+| [Evaluating AGENTS.md, arXiv 2602.11988](https://arxiv.org/abs/2602.11988), latest arXiv revision observed 29 September 2026 | Across the evaluated agents and tasks, context files did not generally improve success and increased inference cost by over 20% on average. Repository overviews were unhelpful in this setting; non-standard practices remain a valid use. This does not prove every short instruction is harmful. | Avoid generic generated overviews and evaluate additions on actual tasks. |
+| [On the impact of AGENTS.md, arXiv 2601.20404](https://arxiv.org/abs/2601.20404), revised 30 March 2026 | Ten repositories and 124 pull requests; lower median runtime and output tokens with context, with comparable task-completion behavior. Reported reductions were 28.64% and 16.58%. These operational measures and tasks differ from the other evaluations. | Measure success and resource use separately. Do not collapse mixed findings into a universal claim. |
+| [Do context files help coding agents?, arXiv 2607.27250](https://arxiv.org/abs/2607.27250), 28 July 2026 | Two agents, 17 tasks across three repositories, 288 evaluated runs. Correctness did not measurably change under tested context strategies, with limited equivalence bounds. Small repository/task coverage limits generalization. | Test the standard with more than one agent and representative tasks. |
+| [Configuration smells, arXiv 2606.15828v5](https://arxiv.org/html/2606.15828v5), 30 July 2026 | Defines context bloat, skill leakage, lint leakage, blind references, init fossilization, and conflicting instructions. The 100-repository study used manual review and heuristics. Its contradiction heuristic had only 57% precision before manual correction. This is descriptive evidence, not proof that removing every flagged rule improves outcomes. | Separate deterministic link failures from suggestions requiring human review. Explain when linked docs matter. |
+| [Stale instruction files override the code, arXiv 2610.30571](https://arxiv.org/abs/2610.30571), 22 October 2026; [authors' artifacts](https://github.com/wenjing95/stale-docs-data) | Read through Papers with Code. Forty constructed Python projects, two agents, 320 runs. Stale guidance dominated choices; a user-level code-precedence sentence changed behavior sharply. Constructed convention conflicts do not establish safety for production systems or intentional migrations. | Resolve descriptive drift against source and tests, while preserving explicit user intent, security requirements, and target-state migrations. |
+| [What Open-Source Projects Tell Their Coding Agents, arXiv 2610.31715v1](https://arxiv.org/html/2610.31715v1), 22 October 2026 | Census of 22,854 popular active repositories in 13 languages, grouping root AGENTS/CLAUDE as one instruction set. Describes mixed project knowledge, code/build/workflow rules and adapter delegation. Model annotations agreed more closely with each other than with human topic review. | Deduplicate paired guides and keep automated pattern flags separate from reviewed defects. Adoption and prevalence do not establish efficacy. |
+
+The 6 November paper is the most recent directly relevant primary full text verified in this targeted review. Earlier web-cache failures for it and the October census were resolved by direct bounded arXiv retrieval; exact HTML hashes and metadata are retained. The census is now included, superseding its earlier exclusion. This is not an exhaustive arXiv survey. The PWC lookup for 2611.09802 returned paper_not_in_catalog; it is a catalog gap, not a missing primary paper. A first CLI attempt terminated under an overrestrictive file limit before producing any catalog result and is retained separately.
+
+## Public repository examples
+
+The comparison was refreshed on 9 November with commit-pinned primary files from five official repositories. Commit responses and exact file bytes/SHA256 are retained in the research evidence. Branch names describe the discovery route; the links below identify the actual observed source. These are examples of repository policy, not measurements of instruction efficacy.
+
+| Repository source | Useful pattern | What not to copy blindly |
+|-------------------|----------------|--------------------------|
+| [HumanLayer guide](https://github.com/humanlayer/humanlayer/blob/f9bd73534a9fb7099a274f951b698b1297122fd9/CLAUDE.md) | The current Riptide monorepo guide names package ownership, filtered checks, service-backed tests and conditional task workflows. | Its installed MCP tools, task symlinks, running-server assumptions and contribution procedures depend on its own environment. Earlier cached Make/deprecation observations are not descriptions of this new snapshot. |
+| [OpenCode guide](https://github.com/anomalyco/opencode/blob/7524e5f4955267efa9882e2dd0f485c363ae49e4/AGENTS.md) | Generated-client ownership, dependency directions, release conventions and the actual dev base branch. | Live diagnostics use repository-specific managed services and private local credentials. These are local runbooks, not authorization to inspect another project’s live sessions. |
+| [Cloudflare root](https://github.com/cloudflare/agents/blob/5c33d89791d6a00c6ea64cf7790fa753e3e5cbfd/AGENTS.md) and [core package](https://github.com/cloudflare/agents/blob/5c33d89791d6a00c6ea64cf7790fa753e3e5cbfd/packages/agents/AGENTS.md) | Explicit scoped routes for core, examples, guides, docs and design; package exports and test/build boundaries. | Its large API catalog, package tree and test matrix belong to this SDK. Root and core exceed the proposed review warning; that does not establish either a defect or an optimal length. |
+| [Next.js root](https://github.com/vercel/next.js/blob/c63bd7a49d577afcea8a934dc80e7dc33be8822e/AGENTS.md) and [skill authoring guide](https://github.com/vercel/next.js/blob/c63bd7a49d577afcea8a934dc80e7dc33be8822e/.agents/skills/README.md) | Always-needed guardrails versus task-specific workflows; root-to-skill references and avoiding duplicated procedures. | Its large root guide and project contribution rules are descriptive examples. The fresh capture did not verify the CLAUDE symlink object, so the earlier alias observation is not new pinned evidence. |
+| [Pydantic AI guide](https://github.com/pydantic/pydantic-ai/blob/b24c2a474babc6d3819110e7c7056c2bcf998222/AGENTS.md) | Scoped source guidance, public API discipline and a distinction between narrow reproduced fixes and new abstractions. | Maintainer alignment, contributor permissions, review targets and coverage policy are project-specific. Do not import new approval gates into owned projects. |
+
+Pinned commits are humanlayer/humanlayer `f9bd73534a9fb7099a274f951b698b1297122fd9`, anomalyco/opencode `7524e5f4955267efa9882e2dd0f485c363ae49e4`, cloudflare/agents `5c33d89791d6a00c6ea64cf7790fa753e3e5cbfd`, vercel/next.js `c63bd7a49d577afcea8a934dc80e7dc33be8822e`, pydantic/pydantic-ai `b24c2a474babc6d3819110e7c7056c2bcf998222`. The seven retrieved files range from 683 to 4,420 whitespace-delimited words. Those are text measurements, not model token counts. Commands and policies were inspected as source data; none of these repositories’ instructions were executed or adopted as authorization. Popularity is not a quality measure.
+
+## Additional primary evaluation evidence
+
+[Vercel’s January2026 evaluation](https://vercel.com/blog/agents-md-outperforms-skills-in-our-agent-evals) reported53% baseline,79% with explicitly triggered docs skill, and100% with an8KB version-matched documentation index on its Next.js16 suite. It also reports that56% of default-skill cases did not invoke the skill. This is framework-specific first-party evidence, not a cross-repository causal guarantee for our router or current models. The article describes removing leakage, ambiguous prompts and implementation-coupled checks; that supports checking observable behavior and accepting valid alternate implementations here. Its reported percentages are not pooled with our runs, and its claim that AGENTS.md is present every turn does not replace our version-specific native-loader tests.
+
+The broadened comparison now includes five distinct OSS projects (HumanLayer, OpenCode, Cloudflare Agents, Next.js and Pydantic AI), plus official Harbor source/skills and native-loader evidence in the evaluation deliverables. Earlier GitHub HTML and raw branch responses sometimes returned different cached revisions. The five official repository examples above now use a fresh commit-pinned capture instead; the old cached retrieval is preserved as lineage. An attempted official anthropics/claude-code CLAUDE.md retrieval returned404 and supplies no positive evidence. No mirror-only result is treated as the owning repository.
+
+## Papers with Code workflow and provenance
+
+Used installed `/Users/danielpetro/.local/bin/pwc` and its generated v0.1.8 skill, extracted with `pwc skills add --dest <task-workspace>/work/research-skills`. No user-level skill configuration was changed.
+
+Commands included:
+
+```sh
+pwc search 'AGENTS.md' --limit 20 --json
+pwc paper info 2602.11988 --include-resources --json
+pwc paper read 2602.11988
+pwc paper info 2610.30571 --include-resources --json
+pwc paper read 2610.30571
+pwc paper list --search 'context files' --published-after 2026-08-01 --order-by date_published --order-dir desc --json
+```
+
+The broad combined AGENTS.md/CLAUDE.md query returned no records. The shorter search found relevant work. The date-filtered query returned pre-August publications, so its output is not treated as a reliable latest-paper filter. PWC metadata for 2602.11988 said v1/latest while the arXiv page exposed v3; the arXiv revision takes precedence for that paper. Preserve raw responses in the task evidence and verify catalog dates and versions against primary sources.
+
+## Evaluation under development
+
+The full Harbor study remains unfinished, with zero frozen/admitted confirmatory tasks and zero scored confirmatory trials. Earlier single-project custom runs are development evidence only. Installing Harbor, testing native loading, and passing known-reference controls do not establish the standard’s efficacy.
+
+The current four-condition proposal is H (recovered historical maintained guides), F (preserved rule facts exposed inline), R (the same facts retrieved through common routed documents), and N (maintained guides removed while ordinary docs remain). F and R share a literal startup/critical prefix, router link, adapters and baseline-derived documents. F need not be concise: deleting facts to meet a word budget would confound content with layout. R–F measures conditional retrieval versus immediate exposure; R–H is a package comparison. Preserving historical facts tests the layout component, not every proposed content cleanup.
+
+Discovery extends to90 completed local days, with7-/14-day cohorts reported separately. Reconstruct full original issues, canonical projects and connected episodes before selection. Do not inflate coverage with worktrees, related follow-ups, browser assertions, mutants or repeated runs. Complete source/oracle/isolation/native-loading/treatment gates for the entire selected cohort before any scored solve, then freeze actual IDs, versions, images, tool profile, schedule, retry and analysis rules.
+
+Measure full task correctness and action boundaries first, resource use separately. Missing usage stays missing; token counts are not monetary costs. Infrastructure-invalid outcomes are distinct from candidate failures, every scheduled endpoint must reconcile, and missing-arm contrast bounds must oppose rather than impute all missing results as failure. Repeats do not create independent tasks. A fully executed admissible study can still be inconclusive. The router requirement and1,000-word review warning remain portfolio policy choices awaiting this evaluation, not empirically established optima.

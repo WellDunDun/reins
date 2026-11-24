@@ -2,6 +2,7 @@
 
 import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, statSync } from "fs";
 import { join, resolve, basename } from "path";
+import { inspectInstructions } from "./instructions";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,7 @@ interface AuditResult {
   max_score: 18;
   maturity_level: string;
   recommendations: string[];
+  instruction_checks: ReturnType<typeof inspectInstructions>;
 }
 
 interface InitOptions {
@@ -37,61 +39,56 @@ interface InitOptions {
 // ─── Templates ──────────────────────────────────────────────────────────────
 
 function agentsMdTemplate(projectName: string): string {
-  return `# AGENTS.md
+  return `# ${projectName} repository guidance
 
-## Repository Overview
+Read the [Documentation router](docs/ROUTER.md) and follow only the routes relevant to the task.
+Before editing a path, read its applicable nested AGENTS.md files and their routers.
+Nested AGENTS.md files contain directory-specific additions and must link to the same router.
 
-${projectName} — [Brief description of the project].
+## Commands and checks
 
-## Architecture
+Setup and verification commands have not been configured by Reins.
+Confirm them in the owning package manifest, build file, or CI configuration before use.
+Record the working directory and focused checks here after verification.
 
-See ARCHITECTURE.md for domain map, package layering, and dependency rules.
+## Project constraints
 
-## Documentation Map
+Document only non-obvious project invariants and external-action boundaries here.
+Move architecture detail, procedures, and historical plans behind the router.
+Keep formatting rules in executable configuration where possible.
+A documentation link does not authorize deployment, publishing, spending, or data deletion.
+Verify descriptive claims against owning source and tests; repair stale prose rather than
+rewriting working code to match it. Preserve explicit requirements and intentional migrations.
+`;
+}
 
-| Topic | Location | Status |
-|-------|----------|--------|
-| Architecture | ARCHITECTURE.md | Current |
-| Design Docs | docs/design-docs/index.md | Current |
-| Core Beliefs | docs/design-docs/core-beliefs.md | Current |
-| Product Specs | docs/product-specs/index.md | Current |
-| Active Plans | docs/exec-plans/active/ | Current |
-| Completed Plans | docs/exec-plans/completed/ | Current |
-| Technical Debt | docs/exec-plans/tech-debt-tracker.md | Current |
-| Golden Principles | docs/golden-principles.md | Current |
-| References | docs/references/ | Current |
+function documentationRouterTemplate(): string {
+  return `# Documentation router
 
-## Development Workflow
+Use the matching route for the task. These are scaffolded documents, not verified descriptions.
+Replace draft content with repository evidence before relying on it.
 
-1. Receive task via prompt
-2. Read this file, then follow pointers to relevant docs
-3. Implement changes following ARCHITECTURE.md layer rules
-4. Run linters and structural tests (\`bun run lint && bun run test\`)
-5. Self-review changes for correctness and style
-6. Request agent review if available
-7. Iterate until all reviewers satisfied
-8. Open PR with concise summary
+| When | Read | State |
+|------|------|-------|
+| Changing boundaries or dependencies | [Architecture](../ARCHITECTURE.md) | Draft |
+| Understanding design decisions | [Design index](design-docs/index.md) | Draft |
+| Changing product behavior | [Product specifications](product-specs/index.md) | Draft |
+| Checking project conventions | [Project principles](golden-principles.md) | Draft |
+| Reviewing outstanding work | [Technical debt](exec-plans/tech-debt-tracker.md) | Draft |
 
-## Key Constraints
-
-- Dependencies flow forward only: Types > Config > Repo > Service > Runtime > UI
-- Cross-cutting concerns enter ONLY through Providers
-- Validate data at boundaries — never probe shapes without validation
-- Prefer shared utilities over hand-rolled helpers
-- All knowledge lives in-repo, not in external tools
-
-## Golden Principles
-
-See docs/golden-principles.md for the full set of mechanical taste rules.
+Add links to existing verification and release procedures when needed.
+Keep entries task-oriented. Do not add routes to files that do not exist.
 `;
 }
 
 function architectureMdTemplate(projectName: string): string {
   return `# Architecture — ${projectName}
 
+Status: Draft scaffold. Replace the example below with actual repository boundaries.
+
 ## Domain Map
 
-<!-- List your business domains here. Each domain follows the layered architecture. -->
+<!-- List actual domains here. This example does not prescribe a required architecture. -->
 
 | Domain | Description | Quality Grade |
 |--------|-------------|---------------|
@@ -101,7 +98,8 @@ function architectureMdTemplate(projectName: string): string {
 
 ## Layered Architecture
 
-Each domain follows a strict layer ordering. Dependencies flow forward only.
+The following is an example dependency model, not a claim about this repository.
+Replace it with the actual architecture and any explicitly intended migrations.
 
 \`\`\`
 Utils
@@ -130,7 +128,7 @@ Business Domain
 
 ### Enforcement
 
-These rules are enforced mechanically:
+No enforcement is installed by this scaffold. Record actual enforcement when added:
 - [ ] Custom linter for import direction (TODO: implement)
 - [ ] Structural tests for layer violations (TODO: implement)
 - [ ] CI gate that fails on violations (TODO: implement)
@@ -157,7 +155,8 @@ src/
 function goldenPrinciplesTemplate(): string {
   return `# Golden Principles
 
-Opinionated mechanical rules that encode human taste. These go beyond standard linters and are enforced in CI.
+Draft discussion prompts. Reins has not installed enforcement for these rules.
+Keep only project-specific exceptions and link to executable configuration.
 
 ## Structural Rules
 
@@ -192,14 +191,14 @@ Opinionated mechanical rules that encode human taste. These go beyond standard l
 
 ## Testing Rules
 
-- Every public function has at least one test
+- Choose tests that verify externally meaningful behavior and material regression risks
 - Tests are co-located with source (\`*.test.ts\` next to \`*.ts\`)
 - Test names describe the expected state, not the action
 - No test interdependence — each test is isolated
 
 ## Documentation Rules
 
-- Every design decision is documented with rationale
+- Record consequential design decisions with rationale
 - Docs are verified against code on a recurring cadence
 - Stale docs are worse than no docs — delete or update
 
@@ -278,7 +277,7 @@ Registry of all design documents with verification status.
 
 | Document | Status | Last Verified | Owner |
 |----------|--------|---------------|-------|
-| core-beliefs.md | Current | ${new Date().toISOString().split("T")[0]} | Team |
+| core-beliefs.md | Draft | Not verified | Unassigned |
 
 ## Verification Schedule
 
@@ -359,6 +358,7 @@ function init(options: InitOptions): void {
   // Create files
   const files: Array<{ path: string; content: string }> = [
     { path: "AGENTS.md", content: agentsMdTemplate(projectName) },
+    { path: "docs/ROUTER.md", content: documentationRouterTemplate() },
     { path: "ARCHITECTURE.md", content: architectureMdTemplate(projectName) },
     { path: "docs/golden-principles.md", content: goldenPrinciplesTemplate() },
     { path: "docs/design-docs/index.md", content: designDocsIndexTemplate() },
@@ -383,7 +383,8 @@ function init(options: InitOptions): void {
         target: targetDir,
         created,
         next_steps: [
-          "Edit AGENTS.md — fill in the project description",
+          "Verify AGENTS.md commands and constraints against this repository",
+          "Review docs/ROUTER.md and replace scaffolded drafts with verified guidance",
           "Edit ARCHITECTURE.md — define your business domains",
           "Edit docs/golden-principles.md — customize rules for your project",
           "Run 'reins audit .' to see your starting score",
@@ -419,6 +420,7 @@ function runAudit(targetPath: string): AuditResult {
     max_score: 18,
     maturity_level: "L0",
     recommendations: [],
+    instruction_checks: inspectInstructions(targetDir),
   };
 
   // ── Repository Knowledge ──────────────────────────────────────────────
@@ -679,7 +681,9 @@ function doctor(targetPath: string): void {
     process.exit(1);
   }
 
-  const checks: Array<{ check: string; status: "pass" | "fail" | "warn"; fix: string }> = [];
+  const checks: Array<{ check: string; status: "pass" | "fail" | "warn"; fix: string }> = inspectInstructions(targetDir).map((item) => ({
+    ...item, check: `${item.path}: ${item.message}`,
+  }));
 
   // AGENTS.md
   const agentsMd = join(targetDir, "AGENTS.md");

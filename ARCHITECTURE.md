@@ -1,64 +1,31 @@
-# Architecture — porto-v2
+# Reins architecture
 
-## Domain Map
+This document describes the local source inspected on 9 November 2026.
 
-<!-- List your business domains here. Each domain follows the layered architecture. -->
+## Components
 
-| Domain | Description | Quality Grade |
-|--------|-------------|---------------|
-| Core | Core business logic | — |
-| Auth | Authentication and authorization | — |
-| UI | User interface components | — |
+| Component | Ownership |
+|-----------|-----------|
+| `cli/reins/src/index.ts` | CLI dispatch, scaffold templates, legacy maturity scoring, doctor and evolve output |
+| `cli/reins/src/instructions.ts` | Read-only instruction discovery, router validation, adapter and length checks |
+| `cli/reins/src/index.test.ts` | CLI behavior tests, including scaffold preservation and JSON results |
+| `cli/reins/src/instructions.test.ts` | Router resolution, nested scope, adapters, exclusions, and boundary cases |
+| `cli/reins/bin/reins.cjs` | Distributed executable wrapper |
+| `skill/Reins/` | Agent-facing Reins workflow guidance |
+| `docs/ROUTER.md` | Task-oriented documentation entry point |
 
-## Layered Architecture
+## Dependency boundaries
 
-Each domain follows a strict layer ordering. Dependencies flow forward only.
+The CLI imports the instruction inspector. The inspector depends only on Node-compatible filesystem and path APIs and never imports the CLI dispatcher. Neither module adds external runtime dependencies.
 
-```
-Utils
-  |
-  v
-Business Domain
-  +-- Types --> Config --> Repo --> Service --> Runtime --> UI
-  |
-  +-- Providers (cross-cutting: auth, connectors, telemetry, feature flags)
-        |
-        v
-      App Wiring + UI
-```
+The instruction inspector reads project text as data. It never executes documented commands or fetches external links. Validated local targets must resolve to files within the target repository. Directory symlinks are not traversed. These checks enforce navigation structure, not semantic instruction correctness.
 
-### Layer Definitions
+## Commands and state
 
-| Layer | Responsibility | May Import From |
-|-------|---------------|-----------------|
-| Types | Data shapes, enums, interfaces | Utils |
-| Config | Configuration loading, validation | Types, Utils |
-| Repo | Data access, storage | Config, Types, Utils |
-| Service | Business logic orchestration | Repo, Config, Types, Utils |
-| Runtime | Process lifecycle, scheduling | Service, Config, Types, Utils |
-| UI | User-facing presentation | Runtime, Service, Types, Utils |
-| Providers | Cross-cutting adapters | Any layer (explicit interface) |
+`init` writes missing scaffold files, with existing overwrite behavior gated by `--force`. `audit` reads repository evidence and emits legacy scores plus additive instruction checks. `doctor` reads the same structural checks and emits pass/fail/warn findings. `evolve --apply` can invoke scaffolding under its existing conditions.
 
-### Enforcement
+Filesystem presence is the main evidence used by legacy maturity heuristics. A linter config does not prove architecture enforcement, and a workflow directory does not prove branch protection. These scoring limitations remain; the instruction-router change does not calibrate the maturity model.
 
-These rules are enforced mechanically:
-- [ ] Custom linter for import direction (TODO: implement)
-- [ ] Structural tests for layer violations (TODO: implement)
-- [ ] CI gate that fails on violations (TODO: implement)
+## Verification
 
-## Package Structure
-
-```
-src/
-  domains/
-    [domain-name]/
-      types/
-      config/
-      repo/
-      service/
-      runtime/
-      ui/
-      providers/
-  utils/
-  shared/
-```
+Run `bun test` from `cli/reins`. For a repository inspection, run `bun src/index.ts audit ../..` and `bun src/index.ts doctor ../..` from the same directory and parse their JSON. There is no lint or typecheck script defined in the package manifest.

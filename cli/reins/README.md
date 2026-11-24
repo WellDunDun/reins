@@ -111,3 +111,14 @@ Based on OpenAI's internal experiment building a product with zero manually-writ
 - **Runtime:** Bun or Node.js
 - **Language:** TypeScript
 - **Output:** JSON
+
+## Instruction routing
+
+`init` scaffolds `docs/ROUTER.md`. Every maintained `AGENTS.md`, including nested
+files, links to a local router that links to an existing `ARCHITECTURE.md`.
+`audit` returns additive `instruction_checks`; `doctor` includes them in its
+summary. Existing guidance is preserved unless `--force` is requested.
+
+Read [the instruction standard](../../docs/instruction-standard.md) for supported
+links, exclusions, adapter rules, and the limits of static checks. Scores do not
+prove runtime correctness or agent autonomy.
